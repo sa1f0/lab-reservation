@@ -31,13 +31,14 @@
     <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
       <div>
         <h1 class="text-2xl sm:text-3xl font-bold">Drone Lab — PC Reservation</h1>
-        <p class="text-sm text-slate-600">Shared backend on Supabase. Reserve with <b>name</b> + <b>passcode</b> (no signup). Admin login for control.</p>
+        <p class="text-sm text-slate-600">Reserve with <b>name</b> + <b>passcode</b>. Admin can control open/lock & removals. Users can cancel their own bookings.</p>
       </div>
       <div class="flex items-center gap-2">
         <button id="btnAdmin" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Admin</button>
       </div>
     </header>
 
+    <!-- Top controls -->
     <section class="grid md:grid-cols-3 gap-6 mb-6">
       <div class="card bg-white p-4">
         <h2 class="font-semibold text-lg mb-2">Date</h2>
@@ -51,7 +52,7 @@
             <option value="120">120 min</option>
           </select>
           <label class="text-sm ml-2">Hours</label>
-          <!-- defaults: 09:30–17:00; allow half-hours with step=0.5 -->
+          <!-- defaults: 09:30–17:00; allow half-hours -->
           <input id="startHour" type="number" step="0.5" min="0" max="23.5" value="9.5" class="w-20 px-2 py-1 rounded-lg border border-slate-300">–
           <input id="endHour" type="number" step="0.5" min="0.5" max="24" value="17" class="w-20 px-2 py-1 rounded-lg border border-slate-300">
           <button id="regen" class="ml-auto btn px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Reload</button>
@@ -69,7 +70,7 @@
           <input id="inpName" placeholder="Your name" class="col-span-3 px-3 py-2 rounded-lg border border-slate-300"/>
           <input id="inpCode" placeholder="Passcode" class="col-span-2 px-3 py-2 rounded-lg border border-slate-300"/>
         </div>
-        <p class="text-xs text-slate-500 mt-2">You can only reserve up to 1 hour per day.</p>
+        <p class="text-xs text-slate-500 mt-2">Limit: up to 60 minutes per day. Use the same passcode to cancel your bookings.</p>
       </div>
 
       <div class="card bg-white p-4">
@@ -82,7 +83,8 @@
       </div>
     </section>
 
-    <section class="grid md:grid-cols-2 gap-6" id="grids">
+    <!-- Slots grids -->
+    <section class="grid md:grid-cols-2 gap-6 mb-6" id="grids">
       <div class="card bg-white p-4 relative">
         <h3 class="font-semibold mb-3">PC-1</h3>
         <div class="grid grid-cols-1 gap-2" id="grid-PC-1"></div>
@@ -93,7 +95,23 @@
       </div>
     </section>
 
-    <footer class="mt-10 text-center text-xs text-slate-500">Server-backed via Supabase. </footer>
+    <!-- User self-cancel panel -->
+    <section class="grid md:grid-cols-2 gap-6">
+      <div class="card bg-white p-4">
+        <h3 class="font-semibold mb-2">My reservations (for selected date)</h3>
+        <p class="text-xs text-slate-500 mb-3">Enter your name & passcode above, then click “Find my reservations”. You can cancel your own bookings.</p>
+        <div class="flex items-center gap-2 mb-3">
+          <button id="btnFindMine" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Find my reservations</button>
+          <span id="mineCount" class="text-xs text-slate-500"></span>
+        </div>
+        <div id="myList" class="divide-y divide-slate-100 text-sm"></div>
+      </div>
+
+      <!-- Admin modal trigger lives in header; right column empty for symmetry -->
+      <div></div>
+    </section>
+
+    <footer class="mt-10 text-center text-xs text-slate-500">Server-backed via Supabase.</footer>
   </div>
 
   <!-- Admin modal -->
@@ -144,13 +162,13 @@
     const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
     const pad = (n)=>String(n).padStart(2,'0');
     const todayStr = ()=> new Date().toISOString().slice(0,10);
+    const toMs = (x)=> new Date(x).getTime();
 
     async function sha256(text){
       const enc = new TextEncoder().encode(text);
       const buf = await crypto.subtle.digest('SHA-256', enc);
       return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
-    const toMs = (x)=> new Date(x).getTime();
     function mkISO(date, hour, min){ return `${date}T${pad(hour)}:${pad(min)}:00Z`; }
 
     // ===== UI elements =====
@@ -183,6 +201,11 @@
     const searchName = $('#searchName');
     const adminList = $('#adminList');
     const btnWipeDay = $('#btnWipeDay');
+
+    // User self-cancel
+    const btnFindMine = $('#btnFindMine');
+    const myList = $('#myList');
+    const mineCount = $('#mineCount');
 
     // ===== State =====
     let selectedPC = 'PC-1';
@@ -274,6 +297,7 @@
           in_pass_hash: pass_hash
         });
         await render();
+        await renderMine(); // update user's list too
       }catch(err){ alert(err.message || 'Error'); }
       finally { clickBusy = false; }
     }
@@ -293,7 +317,7 @@
         const rByPc = listByPC(resvs, pc);
 
         for(const sl of slots){
-          // Normalize time comparison to ms to avoid 'Z' vs '+00:00' string mismatch
+          // compare times in ms
           const r = rByPc.find(x => toMs(x.start_iso) === toMs(sl.startISO));
           const isLocked = (pc==='PC-1'?controls.lock_pc1:controls.lock_pc2);
           const isReserved = !!r;
@@ -326,6 +350,44 @@
       }
     }
 
+    // ===== User self-cancel list =====
+    async function renderMine(){
+      myList.innerHTML = '';
+      mineCount.textContent = '';
+      const date = datePicker.value;
+      const name = (nameInp.value || '').trim();
+      const code = (codeInp.value || '').trim();
+      if (!name || !code) return; // need both
+
+      const pass_hash = await sha256(code);
+      const resvs = await getReservations(date);
+      // Only show items that exactly match name + pass_hash
+      const mine = resvs
+        .filter(r => r.name === name && r.pass_hash === pass_hash)
+        .sort((a,b)=> a.pc.localeCompare(b.pc) || a.start_iso.localeCompare(b.start_iso));
+
+      mineCount.textContent = mine.length ? `${mine.length} found` : 'None found';
+
+      for(const r of mine){
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between py-2';
+        row.innerHTML = `
+          <div><b>${r.pc}</b> · ${slotLabel(r.start_iso, r.end_iso)}</div>
+          <button class="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500">Cancel</button>
+        `;
+        row.lastChild.addEventListener('click', async ()=>{
+          try{
+            await rpcCancel({ in_id: r.id, in_pass_hash: pass_hash });
+            await render();      // refresh grids
+            await renderMine();  // refresh own list
+          }catch(e){ alert(e.message || 'Cancel failed'); }
+        });
+        myList.appendChild(row);
+      }
+    }
+
+    $('#btnFindMine').addEventListener('click', renderMine);
+
     // ===== Admin UI =====
     const renderAdminList = async ()=>{
       const date = datePicker.value;
@@ -343,7 +405,7 @@
         div.lastChild.addEventListener('click', async ()=>{
           try{
             await rpcAdmin('removeReservation', { in_id: r.id });
-            await renderAdminList(); await render();
+            await renderAdminList(); await render(); await renderMine();
           }catch(e){ alert(e.message); }
         });
         adminList.appendChild(div);
@@ -353,17 +415,15 @@
     btnAdmin.addEventListener('click', async ()=>{
       const { data } = await supa.auth.getSession();
       adminSession = data.session || null;
-
       adminModal.classList.remove('hidden'); adminModal.classList.add('flex');
       adminLogin.classList.toggle('hidden', !!adminSession);
       adminPanel.classList.toggle('hidden', !adminSession);
-
       if (adminSession) {
         try {
           const c = await getControls();
           toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
           await renderAdminList();
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
       }
     });
     closeAdmin.addEventListener('click', ()=>{
@@ -388,7 +448,7 @@
           in_lock1: lock1.checked,
           in_lock2: lock2.checked
         });
-        await render();
+        await render(); await renderAdminList(); await renderMine();
       }catch(e){ alert(e.message); }
     };
     toggleOpen.addEventListener('change', applyControlsChange);
@@ -401,7 +461,7 @@
       if(!confirm('Clear all reservations on '+date+'?')) return;
       try{
         await rpcAdmin('clearDay', { in_date: date });
-        await renderAdminList(); await render();
+        await renderAdminList(); await render(); await renderMine();
       }catch(e){ alert(e.message); }
     });
 
@@ -417,10 +477,11 @@
     });
     $$('.pcBtn')[0].click();
 
-    regenBtn.addEventListener('click', render);
-    datePicker.addEventListener('change', render);
-    nameInp.addEventListener('input', render);
+    regenBtn.addEventListener('click', ()=>{ render(); renderMine(); });
+    datePicker.addEventListener('change', ()=>{ render(); renderMine(); });
+    nameInp.addEventListener('input', ()=>{ /* don’t auto-search to avoid hash churn */ });
 
+    // first render
     render();
   </script>
 </body>
