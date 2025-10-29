@@ -8,7 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = 'https://asfjgkvbtxzqibauvwxl.supabase.co';
+    const SUPABASE_URL  = 'https://asfjgkvbtxzqibauvwxl.supabase.co';
     const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZmpna3ZidHh6cWliYXV2d3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NTUwODMsImV4cCI6MjA3NzMzMTA4M30.ZKxf7Kz60S_fdQ1qvVffCGD69vuPfBIUn3dyosZ8WQM';
     const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
   </script>
@@ -33,7 +33,7 @@
       </div>
     </header>
 
-    <!-- Top controls -->
+    <!-- Top controls (Hours removed) -->
     <section class="grid md:grid-cols-3 gap-6 mb-6">
       <div class="card bg-white p-4">
         <h2 class="font-semibold text-lg mb-2">Date</h2>
@@ -43,17 +43,11 @@
           <select id="slotLen" class="px-2 py-1 rounded-lg border border-slate-300">
             <option value="30" selected>30 min</option>
             <option value="60">60 min</option>
-            <option value="90">90 min</option>
-            <option value="120">120 min</option>
           </select>
-          <label class="text-sm ml-2">Hours</label>
-          <input id="startHour" type="number" step="0.5" min="0" max="23.5" value="9.5" class="w-20 px-2 py-1 rounded-lg border border-slate-300">–
-          <input id="endHour" type="number" step="0.5" min="0.5" max="24" value="17" class="w-20 px-2 py-1 rounded-lg border border-slate-300">
-          <button id="regen" class="ml-auto btn px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Reload</button>
-        </div>
-        <div class="mt-4 flex items-center gap-3">
-          <span class="text-sm">Reservations:</span>
-          <span id="openBadge" class="px-2 py-0.5 text-xs rounded-full bg-slate-200 text-slate-800">…</span>
+          <span class="ml-auto text-sm flex items-center gap-2">
+            <span>Reservations:</span>
+            <span id="openBadge" class="px-2 py-0.5 text-xs rounded-full bg-slate-200 text-slate-800">…</span>
+          </span>
         </div>
         <p id="closedMsg" class="hidden mt-2 text-sm text-rose-600">Reservations are disabled by admin.</p>
       </div>
@@ -70,7 +64,7 @@
       <div class="card bg-white p-4">
         <h2 class="font-semibold text-lg mb-2">PCs</h2>
         <div class="flex gap-2">
-          <button data-pc="PC-1" class="pcBtn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC-1</button>
+          <button data-pc="PC-1" class="pcBtn px-3 py-2 rounded-lg bg-sky-600 text-white">PC-1</button>
           <button data-pc="PC-2" class="pcBtn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC-2</button>
         </div>
         <p class="text-xs text-slate-500 mt-2">Reserved slots are greyed out and cannot be clicked.</p>
@@ -89,7 +83,7 @@
       </div>
     </section>
 
-    <!-- Self-cancel -->
+    <!-- Self-cancel + Admin day window -->
     <section class="grid md:grid-cols-2 gap-6 mb-6">
       <div class="card bg-white p-4">
         <h3 class="font-semibold mb-2">My reservations (for selected date)</h3>
@@ -100,10 +94,10 @@
         </div>
         <div id="myList" class="divide-y divide-slate-100 text-sm"></div>
       </div>
-      <!-- Admin controls for the day window -->
+
       <div class="card bg-white p-4">
         <h3 class="font-semibold mb-2">Admin: Day availability (selected date)</h3>
-        <p class="text-xs text-slate-500 mb-3">Set the ONLY bookable window for this date (UTC-based; UI shows your local time).</p>
+        <p class="text-xs text-slate-500 mb-3">Set the ONLY bookable window for this date. (We convert your local time to UTC for the server.)</p>
         <div class="flex items-center gap-3 mb-3">
           <label class="text-sm">Start</label>
           <input id="winStart" type="time" class="px-2 py-1 rounded-lg border border-slate-300" value="09:30">
@@ -111,7 +105,7 @@
           <input id="winEnd" type="time" class="px-2 py-1 rounded-lg border border-slate-300" value="17:00">
           <button id="btnSaveWindow" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Save</button>
         </div>
-        <p class="text-xs text-slate-500">Slots outside this window will be disabled. (Server-enforced.)</p>
+        <p class="text-xs text-slate-500">Slots outside this window will be disabled (client) and rejected (server).</p>
       </div>
     </section>
 
@@ -161,12 +155,13 @@
   </div>
 
   <script>
-    // ===== Helpers =====
+    // ===== utils =====
     const $  = (s, el=document)=>el.querySelector(s);
     const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
     const pad = (n)=>String(n).padStart(2,'0');
     const todayStr = ()=> new Date().toISOString().slice(0,10);
     const toMs = (x)=> new Date(x).getTime();
+    const minutesUTC = iso => { const d = new Date(iso); return d.getUTCHours()*60 + d.getUTCMinutes(); };
 
     async function sha256(text){
       const enc = new TextEncoder().encode(text);
@@ -174,16 +169,12 @@
       return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
     function mkISO(date, hour, min){ return `${date}T${pad(hour)}:${pad(min)}:00Z`; }
-    const minutesUTC = iso => { const d = new Date(iso); return d.getUTCHours()*60 + d.getUTCMinutes(); };
 
-    // ===== UI refs =====
+    // ===== refs =====
     const datePicker = $('#datePicker');
     const slotLenSel = $('#slotLen');
-    const startHourInp = $('#startHour');
-    const endHourInp = $('#endHour');
-    const regenBtn = $('#regen');
-    const openBadge = $('#openBadge');
-    const closedMsg = $('#closedMsg');
+    const openBadge  = $('#openBadge');
+    const closedMsg  = $('#closedMsg');
 
     const nameInp = $('#inpName');
     const codeInp = $('#inpCode');
@@ -192,8 +183,8 @@
     const grid2 = $('#grid-PC-2');
 
     const btnFindMine = $('#btnFindMine');
-    const myList = $('#myList');
-    const mineCount = $('#mineCount');
+    const myList   = $('#myList');
+    const mineCount= $('#mineCount');
 
     // Admin modal
     const adminModal = $('#adminModal');
@@ -212,19 +203,19 @@
     const adminList = $('#adminList');
     const btnWipeDay = $('#btnWipeDay');
 
-    // Day window inputs
     const winStart = $('#winStart');
-    const winEnd = $('#winEnd');
+    const winEnd   = $('#winEnd');
     const btnSaveWindow = $('#btnSaveWindow');
 
-    // ===== State =====
+    // ===== state =====
     let adminSession = null;
     let clickBusy = false;
-    let dayWindow = { start_min: 0, end_min: 1440 }; // fetched per date
+    // default visible window if no rule exists yet (09:30–17:00)
+    let dayWindow = { start_min: 570, end_min: 1020 }; 
 
     datePicker.value = todayStr();
 
-    // ===== Backend helpers =====
+    // ===== backend =====
     async function getReservations(date){
       const { data, error } = await supa.from('reservations').select('*').eq('date', date);
       if(error) throw error; return data || [];
@@ -272,19 +263,36 @@
       }
     }
 
-    // ===== Slots/render =====
+    // ===== PC button colors =====
+    function updatePcButtons(active) {
+      $$('.pcBtn').forEach(btn=>{
+        btn.classList.remove('bg-sky-600','bg-violet-600','text-white');
+        btn.classList.add('bg-white','text-slate-800','border','border-slate-200');
+        if (btn.dataset.pc === 'PC-1' && active === 'PC-1') {
+          btn.classList.remove('bg-white','border','border-slate-200');
+          btn.classList.add('bg-sky-600','text-white');
+        }
+        if (btn.dataset.pc === 'PC-2' && active === 'PC-2') {
+          btn.classList.remove('bg-white','border','border-slate-200');
+          btn.classList.add('bg-violet-600','text-white');
+        }
+      });
+    }
+    $$('.pcBtn').forEach(b=>{
+      b.addEventListener('click', ()=> updatePcButtons(b.dataset.pc));
+    });
+    updatePcButtons('PC-1'); // default visual
+
+    // ===== slot helpers =====
     function generateSlots(date){
       const len = Number(slotLenSel.value);
-      const sH = Number(startHourInp.value);
-      const eH = Number(endHourInp.value);
       const slots=[];
-      for(let h=sH; h<eH; h+=len/60){
-        const hour = Math.floor(h);
-        const minute = Math.round((h - hour) * 60);
-        const startISO = mkISO(date, hour, minute);
-        const endDt = new Date(startISO);
-        endDt.setMinutes(endDt.getMinutes()+len);
-        const endISO = endDt.toISOString();
+      const s = dayWindow.start_min, e = dayWindow.end_min;
+      for(let m=s; m<e; m+=len){
+        // Build startISO at UTC minutes 'm'
+        const d0 = new Date(`${date}T00:00:00Z`);
+        const startISO = new Date(d0.getTime() + m*60000).toISOString();
+        const endISO   = new Date(d0.getTime() + (m+len)*60000).toISOString();
         slots.push({startISO, endISO});
       }
       return slots;
@@ -319,11 +327,13 @@
     async function refreshDayWindow(){
       const date = datePicker.value;
       const rule = await getDayRule(date);
-      dayWindow = {
-        start_min: rule?.start_min ?? 0,
-        end_min: rule?.end_min ?? 1440
-      };
-      // reflect in the admin inputs (as local time display)
+      if (rule) {
+        dayWindow = { start_min: rule.start_min, end_min: rule.end_min };
+      } else {
+        // keep default visible 09:30–17:00 if no rule yet
+        dayWindow = { start_min: 570, end_min: 1020 };
+      }
+      // reflect in admin inputs using local time display
       const toHHMM = (m)=> pad(Math.floor(m/60))+':'+pad(m%60);
       winStart.value = toHHMM(dayWindow.start_min);
       winEnd.value   = toHHMM(dayWindow.end_min);
@@ -347,39 +357,28 @@
 
         for(const sl of slots){
           const r = rByPc.find(x => toMs(x.start_iso) === toMs(sl.startISO));
-          const isLocked = (pc==='PC-1'?controls.lock_pc1:controls.lock_pc2);
           const isReserved = !!r;
-
-          // disable if outside day window (compare in UTC minutes)
-          const sMin = minutesUTC(sl.startISO);
-          const eMin = minutesUTC(sl.endISO);
-          const outsideWindow = (sMin < dayWindow.start_min) || (eMin > dayWindow.end_min);
-
-          const disabled = isLocked || !controls.open || isReserved || outsideWindow;
 
           const btn=document.createElement('button');
           btn.className = [
             'w-full flex items-center justify-between px-3 py-2 rounded-lg border',
-            disabled
+            isReserved
               ? 'bg-slate-200 border-slate-300 text-slate-500 cursor-not-allowed'
               : 'bg-white border-slate-200 hover:bg-slate-50'
           ].join(' ');
-          btn.disabled = disabled;
-
-          let rightHtml = '';
-          if (isReserved) rightHtml = `<div class="text-right"><div class="text-xs">Reserved by <span>${maskName(r.name)}</span></div></div>`;
-          else if (outsideWindow) rightHtml = `<div class="text-xs text-slate-500">Outside hours</div>`;
-          else rightHtml = `<div class="text-xs text-emerald-700">Available</div>`;
+          btn.disabled = isReserved;
 
           btn.innerHTML = `
             <div class="text-left">
               <div class="text-sm font-medium">${slotLabel(sl.startISO, sl.endISO)}</div>
-              <div class="text-xs text-slate-500">${pc}${isLocked?' · Locked':''}</div>
+              <div class="text-xs text-slate-500">${pc}</div>
             </div>
-            ${rightHtml}
-          `;
+            ${isReserved
+              ? `<div class="text-right"><div class="text-xs">Reserved by <span>${maskName(r.name)}</span></div></div>`
+              : `<div class="text-xs text-emerald-700">Available</div>`
+            }`;
 
-          if(!disabled){
+          if(!isReserved){
             btn.addEventListener('click', ()=> reserve(date, pc, sl));
           }
           g.appendChild(btn);
@@ -387,7 +386,7 @@
       }
     }
 
-    // ===== Self-cancel list =====
+    // ===== user self-cancel =====
     async function renderMine(){
       myList.innerHTML = '';
       mineCount.textContent = '';
@@ -429,7 +428,7 @@
     }
     $('#btnFindMine').addEventListener('click', renderMine);
 
-    // ===== Admin UI & actions =====
+    // ===== admin modal & actions =====
     const renderAdminList = async ()=>{
       const date = datePicker.value;
       const resvs = await getReservations(date);
@@ -508,47 +507,26 @@
       }catch(e){ alert(e.message); }
     });
 
-    // Save day window (admin)
+    // Save day window: convert picked LOCAL times to UTC minutes for that date
     btnSaveWindow.addEventListener('click', async ()=>{
-      const date = datePicker.value;
-      const [hhS, mmS] = winStart.value.split(':').map(x=>parseInt(x,10));
-      const [hhE, mmE] = winEnd.value.split(':').map(x=>parseInt(x,10));
-      const start_min = hhS*60 + mmS;
-      const end_min = hhE*60 + mmE;
+      const date = datePicker.value; // YYYY-MM-DD
+      const [sh, sm] = winStart.value.split(':').map(v=>parseInt(v,10));
+      const [eh, em] = winEnd.value.split(':').map(v=>parseInt(v,10));
+
+      // Build local Date objects at that date/time, then extract UTC hh:mm
+      const startLocal = new Date(`${date}T${pad(sh)}:${pad(sm)}:00`);
+      const endLocal   = new Date(`${date}T${pad(eh)}:${pad(em)}:00`);
+      const in_start_min = startLocal.getUTCHours()*60 + startLocal.getUTCMinutes();
+      const in_end_min   = endLocal.getUTCHours()*60   + endLocal.getUTCMinutes();
+
       try{
-        await rpcAdmin('setDayWindow', { in_date: date, in_start_min: start_min, in_end_min: end_min });
+        await rpcAdmin('setDayWindow', { in_date: date, in_start_min, in_end_min });
         await render();
         alert('Saved day window.');
       }catch(e){ alert(e.message || 'Failed to save window'); }
     });
 
     supa.auth.onAuthStateChange((_event, session)=>{ adminSession = session; });
-
-    // ===== PC button color highlights =====
-    function updatePcButtons(active) {
-      $$('.pcBtn').forEach(btn=>{
-        btn.classList.remove('bg-sky-600','text-white','bg-violet-600');
-        btn.classList.add('bg-white','text-slate-800');
-        if (btn.dataset.pc === 'PC-1' && active === 'PC-1') {
-          btn.classList.remove('bg-white');
-          btn.classList.add('bg-sky-600','text-white');
-        }
-        if (btn.dataset.pc === 'PC-2' && active === 'PC-2') {
-          btn.classList.remove('bg-white');
-          btn.classList.add('bg-violet-600','text-white');
-        }
-      });
-    }
-    $$('.pcBtn').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        updatePcButtons(b.dataset.pc);
-      });
-    });
-    updatePcButtons('PC-1'); // default visual
-
-    // refresh flows
-    regenBtn.addEventListener('click', ()=>{ render(); renderMine(); });
-    datePicker.addEventListener('change', ()=>{ render(); renderMine(); });
 
     // initial render
     render();
