@@ -11,6 +11,7 @@
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // === YOUR SUPABASE PROJECT ===
     const SUPABASE_URL = 'https://asfjgkvbtxzqibauvwxl.supabase.co';
     const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZmpna3ZidHh6cWliYXV2d3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NTUwODMsImV4cCI6MjA3NzMzMTA4M30.ZKxf7Kz60S_fdQ1qvVffCGD69vuPfBIUn3dyosZ8WQM';
     const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
@@ -73,8 +74,8 @@
       <div class="card bg-white p-4">
         <h2 class="font-semibold text-lg mb-2">PCs</h2>
         <div class="flex gap-2">
-          <button data-pc="PC-1" class="pcBtn btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC‑1</button>
-          <button data-pc="PC-2" class="pcBtn btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC‑2</button>
+          <button data-pc="PC-1" class="pcBtn btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC-1</button>
+          <button data-pc="PC-2" class="pcBtn btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC-2</button>
         </div>
         <p class="text-xs text-slate-500 mt-2">Click a slot below on the selected PC to reserve/cancel.</p>
       </div>
@@ -82,16 +83,16 @@
 
     <section class="grid md:grid-cols-2 gap-6" id="grids">
       <div class="card bg-white p-4 relative">
-        <h3 class="font-semibold mb-3">PC‑1</h3>
+        <h3 class="font-semibold mb-3">PC-1</h3>
         <div class="grid grid-cols-1 gap-2" id="grid-PC-1"></div>
       </div>
       <div class="card bg-white p-4 relative">
-        <h3 class="font-semibold mb-3">PC‑2</h3>
+        <h3 class="font-semibold mb-3">PC-2</h3>
         <div class="grid grid-cols-1 gap-2" id="grid-PC-2"></div>
       </div>
     </section>
 
-    <footer class="mt-10 text-center text-xs text-slate-500">Server‑backed via Supabase. </footer>
+    <footer class="mt-10 text-center text-xs text-slate-500">Server-backed via Supabase. </footer>
   </div>
 
   <!-- Admin modal -->
@@ -115,9 +116,9 @@
             <input id="toggleOpen" type="checkbox" class="h-4 w-4">
           </div>
           <div class="flex items-center gap-3">
-            <label class="text-sm">Lock PC‑1</label>
+            <label class="text-sm">Lock PC-1</label>
             <input id="lock1" type="checkbox" class="h-4 w-4">
-            <label class="text-sm">Lock PC‑2</label>
+            <label class="text-sm">Lock PC-2</label>
             <input id="lock2" type="checkbox" class="h-4 w-4">
           </div>
         </div>
@@ -148,7 +149,6 @@
       const buf = await crypto.subtle.digest('SHA-256', enc);
       return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
-
     function mkISO(date, hour, min){ return `${date}T${pad(hour)}:${pad(min)}:00Z`; }
 
     // ===== UI elements =====
@@ -184,51 +184,46 @@
 
     // ===== State =====
     let selectedPC = 'PC-1';
-    let adminSession = null; // Supabase auth session for admin
+    let adminSession = null;
 
     datePicker.value = todayStr();
 
-    // ===== Backend RPC wrappers =====
+    // ===== Backend calls =====
     async function getReservations(date){
-      const { data, error } = await supa
-        .from('reservations')
-        .select('*')
-        .eq('date', date);
-      if(error) throw error; return data;
+      const { data, error } = await supa.from('reservations').select('*').eq('date', date);
+      if(error) throw error; return data || [];
     }
     async function getControls(){
-      const { data, error } = await supa
-        .from('controls')
-        .select('*').eq('id',1).single();
+      const { data, error } = await supa.from('controls').select('*').eq('id',1).single();
       if(error) throw error; return data;
     }
-    async function rpcReserve(payload){
-      const { error } = await supa.rpc('reserve_slot', payload);
-      if(error) throw error;
+
+    async function rpcReserve({ in_date, in_pc, in_start_iso, in_end_iso, in_name, in_pass_hash }){
+      const { error } = await supa.rpc('reserve_slot', { in_date, in_pc, in_start_iso, in_end_iso, in_name, in_pass_hash });
+      if (error) throw error;
     }
-    async function rpcCancel(payload){
-      const { error } = await supa.rpc('cancel_slot', payload);
-      if(error) throw error;
+    async function rpcCancel({ in_id, in_pass_hash }){
+      const { error } = await supa.rpc('cancel_slot', { in_id, in_pass_hash });
+      if (error) throw error;
     }
     async function rpcAdmin(action, payload){
-      // ensure logged in
-      if(!adminSession) throw new Error('Admin not logged in');
-      // these RPCs require auth; supa client already carries the JWT in session
-      if(action==='setControls'){
+      if (!adminSession) throw new Error('Admin not logged in');
+
+      if (action === 'setControls') {
         const { error } = await supa.rpc('admin_set_controls', payload);
-        if(error) throw error; return;
+        if (error) throw error; return;
       }
-      if(action==='removeReservation'){
+      if (action === 'removeReservation') {
         const { error } = await supa.rpc('admin_remove_reservation', payload);
-        if(error) throw error; return;
+        if (error) throw error; return;
       }
-      if(action==='clearDay'){
+      if (action === 'clearDay') {
         const { error } = await supa.rpc('admin_clear_day', payload);
-        if(error) throw error; return;
+        if (error) throw error; return;
       }
     }
 
-    // ===== Slots =====
+    // ===== Slots/Render =====
     function generateSlots(date){
       const len = Number(slotLenSel.value);
       const sH = Number(startHourInp.value);
@@ -252,7 +247,6 @@
       if(!name) return ''; if(name.length<=2) return name[0]+"*";
       return name[0] + '*'.repeat(Math.max(1,name.length-2)) + name[name.length-1];
     }
-
     function listByPC(resvs, pc){
       return resvs.filter(r=>r.pc===pc).sort((a,b)=>a.start_iso.localeCompare(b.start_iso));
     }
@@ -265,10 +259,16 @@
 
       try{
         if(resv){
-          // cancel (passcode must match)
-          await rpcCancel({ id: resv.id, pass_hash });
+          await rpcCancel({ in_id: resv.id, in_pass_hash: pass_hash });
         } else {
-          await rpcReserve({ date, pc, start_iso: sl.startISO, end_iso: sl.endISO, name, pass_hash });
+          await rpcReserve({
+            in_date: date,
+            in_pc: pc,
+            in_start_iso: sl.startISO,
+            in_end_iso: sl.endISO,
+            in_name: name,
+            in_pass_hash: pass_hash
+          });
         }
         await render();
       }catch(err){ alert(err.message || 'Error'); }
@@ -301,34 +301,39 @@
       }
     }
 
-    // Admin modal
-    btnAdmin.addEventListener('click', ()=>{
+    // ===== Admin UI =====
+    btnAdmin.addEventListener('click', async ()=>{
+      // check current session
+      const { data } = await supa.auth.getSession();
+      adminSession = data.session || null;
+
       adminModal.classList.remove('hidden'); adminModal.classList.add('flex');
       adminLogin.classList.toggle('hidden', !!adminSession);
       adminPanel.classList.toggle('hidden', !adminSession);
+
+      if (adminSession) {
+        // preload controls into toggles
+        try {
+          const c = await getControls();
+          toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
+          await renderAdminList();
+        } catch (e) { /* ignore */ }
+      }
     });
     closeAdmin.addEventListener('click', ()=>{
       adminModal.classList.add('hidden'); adminModal.classList.remove('flex');
     });
+
     btnAdminLogin.addEventListener('click', async ()=>{
       try{
         const { data, error } = await supa.auth.signInWithPassword({ email: adminEmail.value, password: adminPass.value });
-        if(error) throw error; adminSession = data.session; adminLogin.classList.add('hidden'); adminPanel.classList.remove('hidden');
-        // load controls
+        if(error) throw error;
+        adminSession = data.session;
+        adminLogin.classList.add('hidden'); adminPanel.classList.remove('hidden');
         const c = await getControls();
         toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
         await renderAdminList();
       }catch(err){ alert(err.message||'Login failed'); }
-    });
-
-    toggleOpen.addEventListener('change', async ()=>{
-      try{ await rpcAdmin('setControls', { open: toggleOpen.checked, lock_pc1: lock1.checked, lock_pc2: lock2.checked }); await render(); }catch(e){ alert(e.message); }
-    });
-    lock1.addEventListener('change', async ()=>{
-      try{ await rpcAdmin('setControls', { open: toggleOpen.checked, lock_pc1: lock1.checked, lock_pc2: lock2.checked }); await render(); }catch(e){ alert(e.message); }
-    });
-    lock2.addEventListener('change', async ()=>{
-      try{ await rpcAdmin('setControls', { open: toggleOpen.checked, lock_pc1: lock1.checked, lock_pc2: lock2.checked }); await render(); }catch(e){ alert(e.message); }
     });
 
     async function renderAdminList(){
@@ -345,17 +350,59 @@
         div.innerHTML = `<div><b>${r.pc}</b> · ${slotLabel(r.start_iso, r.end_iso)} · ${maskName(r.name)}</div>`+
                         `<button class="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500">Remove</button>`;
         div.lastChild.addEventListener('click', async ()=>{
-          try{ await rpcAdmin('removeReservation', { id: r.id }); await renderAdminList(); await render(); }catch(e){ alert(e.message); }
+          try{
+            await rpcAdmin('removeReservation', { in_id: r.id });
+            await renderAdminList(); await render();
+          }catch(e){ alert(e.message); }
         });
         adminList.appendChild(div);
       }
     }
     searchName && searchName.addEventListener('input', renderAdminList);
+
+    toggleOpen.addEventListener('change', async ()=>{
+      try{
+        await rpcAdmin('setControls', {
+          in_open: toggleOpen.checked,
+          in_lock1: lock1.checked,
+          in_lock2: lock2.checked
+        });
+        await render();
+      }catch(e){ alert(e.message); }
+    });
+    lock1.addEventListener('change', async ()=>{
+      try{
+        await rpcAdmin('setControls', {
+          in_open: toggleOpen.checked,
+          in_lock1: lock1.checked,
+          in_lock2: lock2.checked
+        });
+        await render();
+      }catch(e){ alert(e.message); }
+    });
+    lock2.addEventListener('change', async ()=>{
+      try{
+        await rpcAdmin('setControls', {
+          in_open: toggleOpen.checked,
+          in_lock1: lock1.checked,
+          in_lock2: lock2.checked
+        });
+        await render();
+      }catch(e){ alert(e.message); }
+    });
+
     btnWipeDay.addEventListener('click', async ()=>{
       const date = datePicker.value;
-      if(confirm('Clear all reservations on '+date+'?')){
-        try{ await rpcAdmin('clearDay', { date }); await renderAdminList(); await render(); }catch(e){ alert(e.message); }
-      }
+      if(!confirm('Clear all reservations on '+date+'?')) return;
+      try{
+        await rpcAdmin('clearDay', { in_date: date });
+        await renderAdminList(); await render();
+      }catch(e){ alert(e.message); }
+    });
+
+    // Keep session in sync
+    supa.auth.onAuthStateChange((_event, session)=>{
+      adminSession = session;
     });
 
     // init
