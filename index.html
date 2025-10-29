@@ -45,14 +45,15 @@
         <div class="mt-4 flex gap-2 items-center">
           <label class="text-sm">Slot length</label>
           <select id="slotLen" class="px-2 py-1 rounded-lg border border-slate-300">
-            <option value="30">30 min</option>
-            <option value="60" selected>60 min</option>
+            <option value="30" selected>30 min</option>
+            <option value="60">60 min</option>
             <option value="90">90 min</option>
             <option value="120">120 min</option>
           </select>
           <label class="text-sm ml-2">Hours</label>
-          <input id="startHour" type="number" min="0" max="23" value="9" class="w-16 px-2 py-1 rounded-lg border border-slate-300">–
-          <input id="endHour" type="number" min="1" max="24" value="21" class="w-16 px-2 py-1 rounded-lg border border-slate-300">
+          <!-- allow half-hours with step=0.5 -->
+          <input id="startHour" type="number" step="0.5" min="0" max="23.5" value="9.5" class="w-20 px-2 py-1 rounded-lg border border-slate-300">–
+          <input id="endHour" type="number" step="0.5" min="0.5" max="24" value="17" class="w-20 px-2 py-1 rounded-lg border border-slate-300">
           <button id="regen" class="ml-auto btn px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Reload</button>
         </div>
         <div class="mt-4 flex items-center gap-3">
@@ -68,7 +69,7 @@
           <input id="inpName" placeholder="Your name" class="col-span-3 px-3 py-2 rounded-lg border border-slate-300"/>
           <input id="inpCode" placeholder="Passcode" class="col-span-2 px-3 py-2 rounded-lg border border-slate-300"/>
         </div>
-        <p class="text-xs text-slate-500 mt-2">Use a short passcode to edit/cancel your reservations later.</p>
+        <p class="text-xs text-slate-500 mt-2">Passcode is only used to cancel your booking (admin can remove any booking).</p>
       </div>
 
       <div class="card bg-white p-4">
@@ -77,7 +78,7 @@
           <button data-pc="PC-1" class="pcBtn btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC-1</button>
           <button data-pc="PC-2" class="pcBtn btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC-2</button>
         </div>
-        <p class="text-xs text-slate-500 mt-2">Click a slot below on the selected PC to reserve/cancel.</p>
+        <p class="text-xs text-slate-500 mt-2">Reserved slots are greyed out and cannot be clicked.</p>
       </div>
     </section>
 
@@ -226,11 +227,13 @@
     // ===== Slots/Render =====
     function generateSlots(date){
       const len = Number(slotLenSel.value);
-      const sH = Number(startHourInp.value);
+      const sH = Number(startHourInp.value); // can be fractional (e.g., 9.5)
       const eH = Number(endHourInp.value);
       const slots=[];
       for(let h=sH; h<eH; h+=len/60){
-        const startISO = mkISO(date, Math.floor(h), (h%1)*60 || 0);
+        const hour = Math.floor(h);
+        const minute = Math.round((h - hour) * 60);
+        const startISO = mkISO(date, hour, minute);
         const endDt = new Date(startISO);
         endDt.setMinutes(endDt.getMinutes()+len);
         const endISO = endDt.toISOString();
@@ -259,7 +262,8 @@
 
       try{
         if(resv){
-          await rpcCancel({ in_id: resv.id, in_pass_hash: pass_hash });
+          // with your request, reserved slots are not clickable; this path is normally not used
+          alert('This slot is already reserved.');
         } else {
           await rpcReserve({
             in_date: date,
@@ -290,12 +294,32 @@
         for(const sl of slots){
           const r = rByPc.find(x=>x.start_iso===sl.startISO);
           const isLocked = (pc==='PC-1'?controls.lock_pc1:controls.lock_pc2);
+
+          const isReserved = !!r;
+          const disabled = isLocked || !controls.open || isReserved;
+
           const btn=document.createElement('button');
-          btn.className='w-full flex items-center justify-between px-3 py-2 rounded-lg border '+(r?'bg-slate-100 border-slate-300':'bg-white border-slate-200 hover:bg-slate-50');
-          btn.disabled = isLocked || !controls.open;
-          btn.innerHTML = `<div class="text-left"><div class="text-sm font-medium">${slotLabel(sl.startISO, sl.endISO)}</div><div class="text-xs text-slate-500">${pc}${isLocked?' · Locked':''}</div></div>` +
-            (r?`<div class="text-right"><div class="text-xs">Reserved by <span class="">${maskName(r.name)}</span></div><div class="text-[10px] text-slate-400">click to cancel (if you own)</div></div>`:`<div class="text-xs text-emerald-700">Available</div>`);
-          btn.addEventListener('click', ()=> reserveOrCancel(date, pc, sl, r||null));
+          btn.className = [
+            'w-full flex items-center justify-between px-3 py-2 rounded-lg border',
+            disabled
+              ? 'bg-slate-200 border-slate-300 text-slate-500 cursor-not-allowed'
+              : 'bg-white border-slate-200 hover:bg-slate-50'
+          ].join(' ');
+          btn.disabled = disabled;
+
+          btn.innerHTML = `
+            <div class="text-left">
+              <div class="text-sm font-medium">${slotLabel(sl.startISO, sl.endISO)}</div>
+              <div class="text-xs text-slate-500">${pc}${isLocked?' · Locked':''}</div>
+            </div>
+            ${isReserved
+              ? `<div class="text-right"><div class="text-xs">Reserved by <span>${maskName(r.name)}</span></div></div>`
+              : `<div class="text-xs text-emerald-700">Available</div>`
+            }`;
+
+          if(!disabled){
+            btn.addEventListener('click', ()=> reserveOrCancel(date, pc, sl, null));
+          }
           g.appendChild(btn);
         }
       }
@@ -303,7 +327,6 @@
 
     // ===== Admin UI =====
     btnAdmin.addEventListener('click', async ()=>{
-      // check current session
       const { data } = await supa.auth.getSession();
       adminSession = data.session || null;
 
@@ -312,7 +335,6 @@
       adminPanel.classList.toggle('hidden', !adminSession);
 
       if (adminSession) {
-        // preload controls into toggles
         try {
           const c = await getControls();
           toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
@@ -360,7 +382,7 @@
     }
     searchName && searchName.addEventListener('input', renderAdminList);
 
-    toggleOpen.addEventListener('change', async ()=>{
+    async function applyControlsChange(){
       try{
         await rpcAdmin('setControls', {
           in_open: toggleOpen.checked,
@@ -369,27 +391,10 @@
         });
         await render();
       }catch(e){ alert(e.message); }
-    });
-    lock1.addEventListener('change', async ()=>{
-      try{
-        await rpcAdmin('setControls', {
-          in_open: toggleOpen.checked,
-          in_lock1: lock1.checked,
-          in_lock2: lock2.checked
-        });
-        await render();
-      }catch(e){ alert(e.message); }
-    });
-    lock2.addEventListener('change', async ()=>{
-      try{
-        await rpcAdmin('setControls', {
-          in_open: toggleOpen.checked,
-          in_lock1: lock1.checked,
-          in_lock2: lock2.checked
-        });
-        await render();
-      }catch(e){ alert(e.message); }
-    });
+    }
+    toggleOpen.addEventListener('change', applyControlsChange);
+    lock1.addEventListener('change', applyControlsChange);
+    lock2.addEventListener('change', applyControlsChange);
 
     btnWipeDay.addEventListener('click', async ()=>{
       const date = datePicker.value;
@@ -415,10 +420,12 @@
     });
     $$('.pcBtn')[0].click();
 
+    // defaults: 30-min, 09:30–17:00 already set in inputs
     regenBtn.addEventListener('click', render);
     datePicker.addEventListener('change', render);
     nameInp.addEventListener('input', render);
 
+    // first render
     render();
   </script>
 </body>
