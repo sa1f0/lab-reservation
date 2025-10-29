@@ -51,7 +51,7 @@
             <option value="120">120 min</option>
           </select>
           <label class="text-sm ml-2">Hours</label>
-          <!-- allow half-hours with step=0.5 -->
+          <!-- defaults: 09:30–17:00; allow half-hours with step=0.5 -->
           <input id="startHour" type="number" step="0.5" min="0" max="23.5" value="9.5" class="w-20 px-2 py-1 rounded-lg border border-slate-300">–
           <input id="endHour" type="number" step="0.5" min="0.5" max="24" value="17" class="w-20 px-2 py-1 rounded-lg border border-slate-300">
           <button id="regen" class="ml-auto btn px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Reload</button>
@@ -69,7 +69,7 @@
           <input id="inpName" placeholder="Your name" class="col-span-3 px-3 py-2 rounded-lg border border-slate-300"/>
           <input id="inpCode" placeholder="Passcode" class="col-span-2 px-3 py-2 rounded-lg border border-slate-300"/>
         </div>
-        <p class="text-xs text-slate-500 mt-2">Passcode is only used to cancel your booking (admin can remove any booking).</p>
+        <p class="text-xs text-slate-500 mt-2">You can only reserve up to 1 hour per day.</p>
       </div>
 
       <div class="card bg-white p-4">
@@ -150,6 +150,7 @@
       const buf = await crypto.subtle.digest('SHA-256', enc);
       return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
     }
+    const toMs = (x)=> new Date(x).getTime();
     function mkISO(date, hour, min){ return `${date}T${pad(hour)}:${pad(min)}:00Z`; }
 
     // ===== UI elements =====
@@ -186,6 +187,7 @@
     // ===== State =====
     let selectedPC = 'PC-1';
     let adminSession = null;
+    let clickBusy = false; // prevents rapid double click
 
     datePicker.value = todayStr();
 
@@ -227,7 +229,7 @@
     // ===== Slots/Render =====
     function generateSlots(date){
       const len = Number(slotLenSel.value);
-      const sH = Number(startHourInp.value); // can be fractional (e.g., 9.5)
+      const sH = Number(startHourInp.value); // may be fractional (e.g., 9.5)
       const eH = Number(endHourInp.value);
       const slots=[];
       for(let h=sH; h<eH; h+=len/60){
@@ -254,28 +256,26 @@
       return resvs.filter(r=>r.pc===pc).sort((a,b)=>a.start_iso.localeCompare(b.start_iso));
     }
 
-    async function reserveOrCancel(date, pc, sl, resv){
-      const name = nameInp.value.trim();
-      const code = codeInp.value.trim();
-      if(!name || !code) return alert('Enter your name and passcode first.');
-      const pass_hash = await sha256(code);
-
+    async function reserve(date, pc, sl){
+      if (clickBusy) return;
+      clickBusy = true;
       try{
-        if(resv){
-          // with your request, reserved slots are not clickable; this path is normally not used
-          alert('This slot is already reserved.');
-        } else {
-          await rpcReserve({
-            in_date: date,
-            in_pc: pc,
-            in_start_iso: sl.startISO,
-            in_end_iso: sl.endISO,
-            in_name: name,
-            in_pass_hash: pass_hash
-          });
-        }
+        const name = nameInp.value.trim();
+        const code = codeInp.value.trim();
+        if(!name || !code) return alert('Enter your name and passcode first.');
+        const pass_hash = await sha256(code);
+
+        await rpcReserve({
+          in_date: date,
+          in_pc: pc,
+          in_start_iso: sl.startISO,
+          in_end_iso: sl.endISO,
+          in_name: name,
+          in_pass_hash: pass_hash
+        });
         await render();
       }catch(err){ alert(err.message || 'Error'); }
+      finally { clickBusy = false; }
     }
 
     async function render(){
@@ -291,10 +291,11 @@
       for(const pc of Object.keys(grids)){
         const g = grids[pc]; g.innerHTML='';
         const rByPc = listByPC(resvs, pc);
-        for(const sl of slots){
-          const r = rByPc.find(x=>x.start_iso===sl.startISO);
-          const isLocked = (pc==='PC-1'?controls.lock_pc1:controls.lock_pc2);
 
+        for(const sl of slots){
+          // Normalize time comparison to ms to avoid 'Z' vs '+00:00' string mismatch
+          const r = rByPc.find(x => toMs(x.start_iso) === toMs(sl.startISO));
+          const isLocked = (pc==='PC-1'?controls.lock_pc1:controls.lock_pc2);
           const isReserved = !!r;
           const disabled = isLocked || !controls.open || isReserved;
 
@@ -318,7 +319,7 @@
             }`;
 
           if(!disabled){
-            btn.addEventListener('click', ()=> reserveOrCancel(date, pc, sl, null));
+            btn.addEventListener('click', ()=> reserve(date, pc, sl));
           }
           g.appendChild(btn);
         }
@@ -326,39 +327,7 @@
     }
 
     // ===== Admin UI =====
-    btnAdmin.addEventListener('click', async ()=>{
-      const { data } = await supa.auth.getSession();
-      adminSession = data.session || null;
-
-      adminModal.classList.remove('hidden'); adminModal.classList.add('flex');
-      adminLogin.classList.toggle('hidden', !!adminSession);
-      adminPanel.classList.toggle('hidden', !adminSession);
-
-      if (adminSession) {
-        try {
-          const c = await getControls();
-          toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
-          await renderAdminList();
-        } catch (e) { /* ignore */ }
-      }
-    });
-    closeAdmin.addEventListener('click', ()=>{
-      adminModal.classList.add('hidden'); adminModal.classList.remove('flex');
-    });
-
-    btnAdminLogin.addEventListener('click', async ()=>{
-      try{
-        const { data, error } = await supa.auth.signInWithPassword({ email: adminEmail.value, password: adminPass.value });
-        if(error) throw error;
-        adminSession = data.session;
-        adminLogin.classList.add('hidden'); adminPanel.classList.remove('hidden');
-        const c = await getControls();
-        toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
-        await renderAdminList();
-      }catch(err){ alert(err.message||'Login failed'); }
-    });
-
-    async function renderAdminList(){
+    const renderAdminList = async ()=>{
       const date = datePicker.value;
       const resvs = await getReservations(date);
       const q = (searchName.value||'').toLowerCase();
@@ -379,10 +348,40 @@
         });
         adminList.appendChild(div);
       }
-    }
-    searchName && searchName.addEventListener('input', renderAdminList);
+    };
 
-    async function applyControlsChange(){
+    btnAdmin.addEventListener('click', async ()=>{
+      const { data } = await supa.auth.getSession();
+      adminSession = data.session || null;
+
+      adminModal.classList.remove('hidden'); adminModal.classList.add('flex');
+      adminLogin.classList.toggle('hidden', !!adminSession);
+      adminPanel.classList.toggle('hidden', !adminSession);
+
+      if (adminSession) {
+        try {
+          const c = await getControls();
+          toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
+          await renderAdminList();
+        } catch (e) { /* ignore */ }
+      }
+    });
+    closeAdmin.addEventListener('click', ()=>{
+      adminModal.classList.add('hidden'); adminModal.classList.remove('flex');
+    });
+    btnAdminLogin.addEventListener('click', async ()=>{
+      try{
+        const { data, error } = await supa.auth.signInWithPassword({ email: adminEmail.value, password: adminPass.value });
+        if(error) throw error;
+        adminSession = data.session;
+        adminLogin.classList.add('hidden'); adminPanel.classList.remove('hidden');
+        const c = await getControls();
+        toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
+        await renderAdminList();
+      }catch(err){ alert(err.message||'Login failed'); }
+    });
+
+    const applyControlsChange = async ()=>{
       try{
         await rpcAdmin('setControls', {
           in_open: toggleOpen.checked,
@@ -391,11 +390,12 @@
         });
         await render();
       }catch(e){ alert(e.message); }
-    }
+    };
     toggleOpen.addEventListener('change', applyControlsChange);
     lock1.addEventListener('change', applyControlsChange);
     lock2.addEventListener('change', applyControlsChange);
 
+    searchName && searchName.addEventListener('input', renderAdminList);
     btnWipeDay.addEventListener('click', async ()=>{
       const date = datePicker.value;
       if(!confirm('Clear all reservations on '+date+'?')) return;
@@ -405,10 +405,7 @@
       }catch(e){ alert(e.message); }
     });
 
-    // Keep session in sync
-    supa.auth.onAuthStateChange((_event, session)=>{
-      adminSession = session;
-    });
+    supa.auth.onAuthStateChange((_event, session)=>{ adminSession = session; });
 
     // init
     $$('.pcBtn').forEach(b=>{
@@ -420,12 +417,10 @@
     });
     $$('.pcBtn')[0].click();
 
-    // defaults: 30-min, 09:30–17:00 already set in inputs
     regenBtn.addEventListener('click', render);
     datePicker.addEventListener('change', render);
     nameInp.addEventListener('input', render);
 
-    // first render
     render();
   </script>
 </body>
