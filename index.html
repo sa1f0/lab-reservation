@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Drone Lab — PC Reservation</title>
+  <!-- Tailwind (CDN build for GitHub Pages) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--brand:#0ea5e9}
+    *{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    .card{border-radius:1rem;box-shadow:0 10px 20px rgba(0,0,0,.05)}
+    .btn{transition:transform .05s ease}
+    .btn:active{transform:translateY(1px)}
+    .mask-name{letter-spacing:.3px}
+    .disabled-overlay{backdrop-filter:blur(2px)}
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div class="max-w-6xl mx-auto p-4 sm:p-8">
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold">Drone Lab — PC Reservation</h1>
+        <p class="text-sm text-slate-600">Reserve a slot with your <b>name</b> and a <b>passcode</b>. No account needed.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnAdmin" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Admin</button>
+        <button id="btnExport" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Export</button>
+        <label class="px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 cursor-pointer">Import<input id="inputImport" type="file" accept="application/json" class="hidden"/></label>
+      </div>
+    </header>
+
+    <section class="grid md:grid-cols-3 gap-6 mb-6">
+      <div class="card bg-white p-4">
+        <h2 class="font-semibold text-lg mb-2">Date</h2>
+        <input id="datePicker" type="date" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+        <p class="text-xs text-slate-500 mt-2">Default: today. Each day has its own schedule.</p>
+        <div class="mt-4 flex gap-2 items-center">
+          <label class="text-sm">Slot length</label>
+          <select id="slotLen" class="px-2 py-1 rounded-lg border border-slate-300">
+            <option value="30">30 min</option>
+            <option value="60" selected>60 min</option>
+            <option value="90">90 min</option>
+            <option value="120">120 min</option>
+          </select>
+          <label class="text-sm ml-2">Hours</label>
+          <input id="startHour" type="number" min="0" max="23" value="9" class="w-16 px-2 py-1 rounded-lg border border-slate-300">–
+          <input id="endHour" type="number" min="1" max="24" value="21" class="w-16 px-2 py-1 rounded-lg border border-slate-300">
+          <button id="regen" class="ml-auto btn px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Reload</button>
+        </div>
+        <div class="mt-4 flex items-center gap-3">
+          <span class="text-sm">Reservations:</span>
+          <span id="openBadge" class="px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-800">Open</span>
+        </div>
+        <p id="closedMsg" class="hidden mt-2 text-sm text-rose-600">Reservations are currently disabled by admin.</p>
+      </div>
+
+      <div class="card bg-white p-4">
+        <h2 class="font-semibold text-lg mb-2">Your details</h2>
+        <div class="grid grid-cols-5 gap-2">
+          <input id="inpName" placeholder="Your name" class="col-span-3 px-3 py-2 rounded-lg border border-slate-300"/>
+          <input id="inpCode" placeholder="Passcode" class="col-span-2 px-3 py-2 rounded-lg border border-slate-300"/>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">Use a short passcode to edit/cancel your reservations later.</p>
+      </div>
+
+      <div class="card bg-white p-4">
+        <h2 class="font-semibold text-lg mb-2">PCs</h2>
+        <div class="flex gap-2">
+          <button data-pc="PC-1" class="pcBtn btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC‑1</button>
+          <button data-pc="PC-2" class="pcBtn btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC‑2</button>
+        </div>
+        <p class="text-xs text-slate-500 mt-2">Click a slot below on the selected PC to reserve/cancel.</p>
+      </div>
+    </section>
+
+    <section class="grid md:grid-cols-2 gap-6" id="grids">
+      <div class="card bg-white p-4 relative">
+        <h3 class="font-semibold mb-3">PC‑1</h3>
+        <div class="grid grid-cols-1 gap-2" id="grid-PC-1"></div>
+        <div class="absolute inset-0 hidden disabled-overlay items-center justify-center bg-white/70" id="lock-PC-1"><div class="px-3 py-1.5 rounded bg-rose-100 text-rose-800 text-sm">Disabled</div></div>
+      </div>
+      <div class="card bg-white p-4 relative">
+        <h3 class="font-semibold mb-3">PC‑2</h3>
+        <div class="grid grid-cols-1 gap-2" id="grid-PC-2"></div>
+        <div class="absolute inset-0 hidden disabled-overlay items-center justify-center bg-white/70" id="lock-PC-2"><div class="px-3 py-1.5 rounded bg-rose-100 text-rose-800 text-sm">Disabled</div></div>
+      </div>
+    </section>
+
+    <footer class="mt-10 text-center text-xs text-slate-500">Made for Drone Lab — GitHub Pages demo. Data is stored in this browser (localStorage). Use Export/Import to sync.</footer>
+  </div>
+
+  <!-- Admin modal -->
+  <div id="adminModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4">
+    <div class="w-full max-w-lg card bg-white p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold">Admin</h3>
+        <button id="closeAdmin" class="px-2 py-1 text-slate-500 hover:text-slate-700">✕</button>
+      </div>
+      <div id="adminLogin" class="space-y-3">
+        <input id="adminPass" type="password" placeholder="Admin password" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+        <div class="flex gap-2 justify-end">
+          <button id="btnAdminLogin" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Log in</button>
+        </div>
+      </div>
+      <div id="adminPanel" class="hidden">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-3">
+            <label class="text-sm">Reservations open</label>
+            <input id="toggleOpen" type="checkbox" class="h-4 w-4">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm">Lock PC‑1</label>
+            <input id="lock1" type="checkbox" class="h-4 w-4">
+            <label class="text-sm">Lock PC‑2</label>
+            <input id="lock2" type="checkbox" class="h-4 w-4">
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="border border-slate-200 rounded-lg p-3">
+            <h4 class="font-semibold mb-2">Search & remove</h4>
+            <input id="searchName" placeholder="Search by name" class="w-full px-3 py-2 rounded-lg border border-slate-300 mb-2"/>
+            <div id="adminList" class="max-h-64 overflow-auto text-sm"></div>
+          </div>
+          <div class="border border-slate-200 rounded-lg p-3">
+            <h4 class="font-semibold mb-2">Settings</h4>
+            <label class="text-sm block mb-1">Change admin password (stored in this browser)</label>
+            <input id="newAdminPass" type="password" placeholder="New admin password" class="w-full px-3 py-2 rounded-lg border border-slate-300 mb-2"/>
+            <button id="btnChangeAdmin" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Update</button>
+            <p class="text-xs text-slate-500 mt-2">Note: For GitHub Pages, this is client-side only. Do not use a sensitive password.</p>
+            <div class="mt-4">
+              <button id="btnWipeDay" class="btn px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-500">Clear selected date</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== Simple, static, browser-only reservation system ======
+    // Storage model (in localStorage):
+    // key: 'pc-resv:v2' => {
+    //   adminHash: string,
+    //   open: boolean,
+    //   locks: {"PC-1": boolean, "PC-2": boolean},
+    //   data: { [dateKey: YYYY-MM-DD]: { slotLen:number, startHour:number, endHour:number, resvs: Array<Resv> } }
+    // }
+    // Resv: { id, pc, date, startISO, endISO, name, passHash }
+
+    const SKEY = 'pc-resv:v2';
+
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+
+    const todayStr = () => new Date().toISOString().slice(0,10);
+
+    const defaultState = () => ({
+      adminHash: '',
+      open: true,
+      locks: {"PC-1": false, "PC-2": false},
+      data: {}
+    });
+
+    const load = () => {
+      try { return JSON.parse(localStorage.getItem(SKEY)) || defaultState(); }
+      catch { return defaultState(); }
+    };
+    const save = (st) => localStorage.setItem(SKEY, JSON.stringify(st));
+
+    // crypto helpers
+    async function sha256(text) {
+      const enc = new TextEncoder().encode(text);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+
+    // state
+    let state = load();
+    let selectedPC = 'PC-1';
+
+    // UI elements
+    const datePicker = $('#datePicker');
+    const slotLenSel = $('#slotLen');
+    const startHourInp = $('#startHour');
+    const endHourInp = $('#endHour');
+    const regenBtn = $('#regen');
+    const openBadge = $('#openBadge');
+    const closedMsg = $('#closedMsg');
+
+    const nameInp = $('#inpName');
+    const codeInp = $('#inpCode');
+
+    const grid1 = $('#grid-PC-1');
+    const grid2 = $('#grid-PC-2');
+    const lock1Layer = $('#lock-PC-1');
+    const lock2Layer = $('#lock-PC-2');
+
+    // admin modal
+    const adminModal = $('#adminModal');
+    const btnAdmin = $('#btnAdmin');
+    const btnExport = $('#btnExport');
+    const inputImport = $('#inputImport');
+
+    const adminLogin = $('#adminLogin');
+    const adminPanel = $('#adminPanel');
+    const adminPass = $('#adminPass');
+    const btnAdminLogin = $('#btnAdminLogin');
+    const closeAdmin = $('#closeAdmin');
+
+    const toggleOpen = $('#toggleOpen');
+    const lock1 = $('#lock1');
+    const lock2 = $('#lock2');
+
+    const searchName = $('#searchName');
+    const adminList = $('#adminList');
+    const newAdminPass = $('#newAdminPass');
+    const btnChangeAdmin = $('#btnChangeAdmin');
+    const btnWipeDay = $('#btnWipeDay');
+
+    // init date
+    datePicker.value = todayStr();
+
+    // helpers for date/slots
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function mkISO(date, hour, min){ return `${date}T${pad(hour)}:${pad(min)}:00`; }
+
+    function dateConfig(date){
+      const d = state.data[date] || { slotLen: Number(slotLenSel.value), startHour: Number(startHourInp.value), endHour: Number(endHourInp.value), resvs: [] };
+      return d;
+    }
+
+    function setDateConfig(date, cfg){
+      state.data[date] = cfg; save(state);
+    }
+
+    function generateSlots(date){
+      const cfg = dateConfig(date);
+      const slots = [];
+      for(let h=cfg.startHour; h<cfg.endHour;){
+        const startH=h, startM=0;
+        const end = new Date(`${date}T${pad(h)}:00:00`);
+        end.setMinutes(end.getMinutes()+cfg.slotLen);
+        const endH = end.getHours();
+        const endM = end.getMinutes();
+        slots.push({startISO: mkISO(date,startH,startM), endISO: mkISO(date,endH,endM)});
+        h += cfg.slotLen/60;
+      }
+      return slots;
+    }
+
+    function maskName(name){
+      if(!name) return '';
+      if(name.length<=2) return name[0]+"*";
+      return name[0] + '*'.repeat(Math.max(1,name.length-2)) + name[name.length-1];
+    }
+
+    function listReservations(date, pc){
+      const cfg = dateConfig(date);
+      return cfg.resvs.filter(r=>r.pc===pc).sort((a,b)=>a.startISO.localeCompare(b.startISO));
+    }
+
+    function findReservation(date, pc, startISO){
+      const cfg = dateConfig(date);
+      return cfg.resvs.find(r=>r.pc===pc && r.startISO===startISO);
+    }
+
+    async function reserveOrCancel(date, pc, startISO, endISO){
+      if(!state.open){ alert('Reservations are disabled by admin.'); return; }
+      if(state.locks[pc]){ alert(`${pc} is locked by admin.`); return; }
+      const name = nameInp.value.trim();
+      const code = codeInp.value.trim();
+      if(!name || !code){ alert('Enter your name and passcode first.'); return; }
+      const passHash = await sha256(code);
+      const cfg = dateConfig(date);
+      const existing = findReservation(date, pc, startISO);
+
+      if(existing){
+        // cancel only if pass matches, or admin mode
+        const isAdmin = adminPanel.classList.contains('block');
+        if(isAdmin || existing.passHash===passHash){
+          cfg.resvs = cfg.resvs.filter(r=>r.id!==existing.id);
+          setDateConfig(date, cfg);
+          render();
+        } else {
+          alert('Wrong passcode for this reservation.');
+        }
+      } else {
+        // create
+        const id = crypto.randomUUID();
+        cfg.resvs.push({ id, pc, date, startISO, endISO, name, passHash });
+        setDateConfig(date, cfg);
+        render();
+      }
+    }
+
+    function slotLabel(startISO, endISO){
+      const s = new Date(startISO), e = new Date(endISO);
+      const f = (d)=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      return `${f(s)}–${f(e)}`;
+    }
+
+    function renderGrids(){
+      const date = datePicker.value;
+      const cfg = dateConfig(date);
+      // sync controls from config
+      slotLenSel.value = cfg.slotLen;
+      startHourInp.value = cfg.startHour;
+      endHourInp.value = cfg.endHour;
+
+      const slots = generateSlots(date);
+      const grids = {"PC-1": grid1, "PC-2": grid2};
+      for(const pc of Object.keys(grids)){
+        const g = grids[pc];
+        g.innerHTML = '';
+        const resvs = listReservations(date, pc);
+        for(const sl of slots){
+          const r = resvs.find(x=>x.startISO===sl.startISO);
+          const isMine = r && nameInp.value && r.name===nameInp.value.trim();
+          const btn = document.createElement('button');
+          btn.className = 'w-full flex items-center justify-between px-3 py-2 rounded-lg border ' + (r ? 'bg-slate-100 border-slate-300' : 'bg-white border-slate-200 hover:bg-slate-50');
+          btn.innerHTML = `<div class="text-left"><div class="text-sm font-medium">${slotLabel(sl.startISO, sl.endISO)}</div><div class="text-xs text-slate-500">${pc}</div></div>` +
+            (r ? `<div class="text-right"><div class="text-xs">Reserved by <span class="mask-name">${maskName(r.name)}</span></div><div class="text-[10px] text-slate-400">click to ${isMine?'cancel':'request cancel'}</div></div>` : `<div class="text-xs text-emerald-700">Available</div>`);
+          btn.addEventListener('click', ()=> reserveOrCancel(date, pc, sl.startISO, sl.endISO));
+          g.appendChild(btn);
+        }
+      }
+
+      // locks
+      lock1Layer.classList.toggle('hidden', !state.locks['PC-1']);
+      lock2Layer.classList.toggle('hidden', !state.locks['PC-2']);
+
+      // badges
+      openBadge.textContent = state.open ? 'Open' : 'Closed';
+      openBadge.className = 'px-2 py-0.5 text-xs rounded-full ' + (state.open?'bg-emerald-100 text-emerald-800':'bg-rose-100 text-rose-800');
+      closedMsg.classList.toggle('hidden', state.open);
+    }
+
+    function renderAdminList(){
+      const date = datePicker.value;
+      const cfg = dateConfig(date);
+      const q = searchName.value.trim().toLowerCase();
+      const rows = cfg.resvs
+        .filter(r=>!q || r.name.toLowerCase().includes(q))
+        .sort((a,b)=> a.pc.localeCompare(b.pc) || a.startISO.localeCompare(b.startISO))
+        .map(r=>{
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between border-b border-slate-100 py-1.5';
+          row.innerHTML = `<div><b>${r.pc}</b> · ${slotLabel(r.startISO,r.endISO)} · <span class="mask-name">${maskName(r.name)}</span></div>`+
+                          `<button class="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500">Remove</button>`;
+          row.lastChild.addEventListener('click', ()=>{
+            cfg.resvs = cfg.resvs.filter(x=>x.id!==r.id); setDateConfig(date,cfg); render(); renderAdminList();
+          });
+          return row;
+        });
+      adminList.innerHTML=''; rows.forEach(x=>adminList.appendChild(x));
+    }
+
+    function render(){
+      renderGrids();
+      if(!adminPanel.classList.contains('hidden')) renderAdminList();
+    }
+
+    // events
+    $$('.pcBtn').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        selectedPC = b.dataset.pc;
+        $$('.pcBtn').forEach(x=>x.classList.remove('bg-slate-900','text-white'));
+        b.classList.add('bg-slate-900','text-white');
+      });
+    });
+    $$('.pcBtn')[0].click();
+
+    regenBtn.addEventListener('click', ()=>{
+      const date = datePicker.value;
+      const cfg = dateConfig(date);
+      cfg.slotLen = Number(slotLenSel.value);
+      cfg.startHour = Number(startHourInp.value);
+      cfg.endHour = Number(endHourInp.value);
+      setDateConfig(date, cfg);
+      render();
+    });
+
+    datePicker.addEventListener('change', render);
+    nameInp.addEventListener('input', render);
+
+    // admin modal logic
+    btnAdmin.addEventListener('click', ()=>{
+      adminModal.classList.remove('hidden');
+      adminModal.classList.add('flex');
+      const loggedIn = !!state.adminHash;
+      adminLogin.classList.toggle('hidden', loggedIn);
+      adminPanel.classList.toggle('hidden', !loggedIn);
+      adminPanel.classList.toggle('block', loggedIn);
+      toggleOpen.checked = state.open;
+      lock1.checked = state.locks['PC-1'];
+      lock2.checked = state.locks['PC-2'];
+      renderAdminList();
+    });
+    closeAdmin.addEventListener('click', ()=>{
+      adminModal.classList.add('hidden');
+      adminModal.classList.remove('flex');
+    });
+
+    btnAdminLogin.addEventListener('click', async ()=>{
+      const pass = adminPass.value;
+      if(!pass) return alert('Enter admin password');
+      state.adminHash = await sha256(pass);
+      save(state);
+      adminPass.value = '';
+      adminLogin.classList.add('hidden');
+      adminPanel.classList.remove('hidden');
+      adminPanel.classList.add('block');
+      toggleOpen.checked = state.open;
+      lock1.checked = state.locks['PC-1'];
+      lock2.checked = state.locks['PC-2'];
+      renderAdminList();
+    });
+
+    toggleOpen.addEventListener('change', ()=>{ state.open = toggleOpen.checked; save(state); render(); });
+    lock1.addEventListener('change', ()=>{ state.locks['PC-1']= lock1.checked; save(state); render(); });
+    lock2.addEventListener('change', ()=>{ state.locks['PC-2']= lock2.checked; save(state); render(); });
+
+    btnChangeAdmin.addEventListener('click', async ()=>{
+      const np = newAdminPass.value.trim();
+      if(!np) return alert('Enter a new password');
+      state.adminHash = await sha256(np); save(state); newAdminPass.value=''; alert('Admin password updated for this browser.');
+    });
+
+    btnWipeDay.addEventListener('click', ()=>{
+      const date = datePicker.value;
+      if(confirm('Clear all reservations on '+date+'?')){
+        const cfg = dateConfig(date);
+        cfg.resvs = []; setDateConfig(date, cfg); render(); renderAdminList();
+      }
+    });
+
+    // Export/Import
+    btnExport.addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'lab-reservations.json';
+      a.click();
+    });
+    inputImport.addEventListener('change', async (e)=>{
+      const file = e.target.files?.[0]; if(!file) return;
+      const text = await file.text();
+      try{
+        const obj = JSON.parse(text);
+        // shallow validate
+        if(!obj || typeof obj !== 'object' || !obj.data) throw new Error('Invalid');
+        state = obj; save(state); render(); alert('Imported.');
+      }catch(err){ alert('Invalid JSON file.'); }
+      inputImport.value = '';
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
