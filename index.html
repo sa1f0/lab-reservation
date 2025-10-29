@@ -31,7 +31,7 @@
     <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
       <div>
         <h1 class="text-2xl sm:text-3xl font-bold">Drone Lab — PC Reservation</h1>
-        <p class="text-sm text-slate-600">Reserve with <b>name</b> + <b>passcode</b>. Admin can control open/lock & removals. Users can cancel their own bookings.</p>
+        <p class="text-sm text-slate-600">Reserve with <b>name</b> + <b>passcode</b>. Admin controls open/lock. Users can cancel their own bookings.</p>
       </div>
       <div class="flex items-center gap-2">
         <button id="btnAdmin" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Admin</button>
@@ -106,8 +106,6 @@
         </div>
         <div id="myList" class="divide-y divide-slate-100 text-sm"></div>
       </div>
-
-      <!-- Admin modal trigger lives in header; right column empty for symmetry -->
       <div></div>
     </section>
 
@@ -208,7 +206,6 @@
     const mineCount = $('#mineCount');
 
     // ===== State =====
-    let selectedPC = 'PC-1';
     let adminSession = null;
     let clickBusy = false; // prevents rapid double click
 
@@ -228,12 +225,28 @@
       const { error } = await supa.rpc('reserve_slot', { in_date, in_pc, in_start_iso, in_end_iso, in_name, in_pass_hash });
       if (error) throw error;
     }
+
+    // NEW: robust cancel (tries owner RPC, falls back to original)
     async function rpcCancelByOwner({ in_id, in_name, in_pass_hash }){
-  const { error } = await supa.rpc('cancel_slot_by_owner', { in_id, in_name, in_pass_hash });
-  if (error) throw error;
-}
+      // Try cancel_slot_by_owner first
+      let { error } = await supa.rpc('cancel_slot_by_owner', { in_id, in_name, in_pass_hash });
+      if (!error) return;
+      console.warn('cancel_slot_by_owner error:', error?.message);
+
+      // If function missing or not exposed, fall back to cancel_slot (id + pass only)
+      if (error?.message?.toLowerCase()?.includes('not found') ||
+          error?.message?.toLowerCase()?.includes('schema cache') ||
+          error?.code === 'PGRST202' /* function not found */) {
+        const { error: e2 } = await supa.rpc('cancel_slot', { in_id, in_pass_hash });
+        if (e2) throw e2;
+        return;
+      }
+      throw error;
+    }
 
     async function rpcAdmin(action, payload){
+      const { data } = await supa.auth.getSession();
+      adminSession = data?.session || null;
       if (!adminSession) throw new Error('Admin not logged in');
 
       if (action === 'setControls') {
@@ -267,25 +280,23 @@
       }
       return slots;
     }
-    function slotLabel(startISO, endISO){
+    const slotLabel = (startISO, endISO)=>{
       const s=new Date(startISO), e=new Date(endISO);
       const f=(d)=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
       return `${f(s)}–${f(e)}`;
-    }
-    function maskName(name){
+    };
+    const maskName = (name)=>{
       if(!name) return ''; if(name.length<=2) return name[0]+"*";
       return name[0] + '*'.repeat(Math.max(1,name.length-2)) + name[name.length-1];
-    }
-    function listByPC(resvs, pc){
-      return resvs.filter(r=>r.pc===pc).sort((a,b)=>a.start_iso.localeCompare(b.start_iso));
-    }
+    };
+    const listByPC = (resvs, pc)=> resvs.filter(r=>r.pc===pc).sort((a,b)=>a.start_iso.localeCompare(b.start_iso));
 
     async function reserve(date, pc, sl){
       if (clickBusy) return;
       clickBusy = true;
       try{
-        const name = nameInp.value.trim();
-        const code = codeInp.value.trim();
+        const name = (nameInp.value || '').trim();
+        const code = (codeInp.value || '').trim();
         if(!name || !code) return alert('Enter your name and passcode first.');
         const pass_hash = await sha256(code);
 
@@ -298,9 +309,11 @@
           in_pass_hash: pass_hash
         });
         await render();
-        await renderMine(); // update user's list too
-      }catch(err){ alert(err.message || 'Error'); }
-      finally { clickBusy = false; }
+        await renderMine();
+      }catch(err){
+        console.error('reserve error:', err);
+        alert(err.message || 'Error making reservation');
+      } finally { clickBusy = false; }
     }
 
     async function render(){
@@ -372,26 +385,32 @@
       for(const r of mine){
         const row = document.createElement('div');
         row.className = 'flex items-center justify-between py-2';
-        row.innerHTML = `
-          <div><b>${r.pc}</b> · ${slotLabel(r.start_iso, r.end_iso)}</div>
-          <button class="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500">Cancel</button>
-        `;
-        row.lastChild.addEventListener('click', async ()=>{
-  try{
-    const nameNow = (nameInp.value || '').trim();
-    const codeNow = (codeInp.value || '').trim();
-    if (!nameNow || !codeNow) return alert('Enter your name and passcode above first.');
-    const pass_hash = await sha256(codeNow);
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500';
+        cancelBtn.textContent = 'Cancel';
 
-    await rpcCancelByOwner({ in_id: r.id, in_name: nameNow, in_pass_hash: pass_hash });
-    await render();      // refresh grids
-    await renderMine();  // refresh own list
-  }catch(e){
-    alert(e.message || 'Cancel failed');
-    console.error(e);
-  }
-});
+        cancelBtn.addEventListener('click', async ()=>{
+          const nameNow = (nameInp.value || '').trim();
+          const codeNow = (codeInp.value || '').trim();
+          if (!nameNow || !codeNow) return alert('Enter your name and passcode above first.');
+          cancelBtn.disabled = true;
+          cancelBtn.textContent = 'Cancelling…';
+          try{
+            const pass_hash_now = await sha256(codeNow);
+            await rpcCancelByOwner({ in_id: r.id, in_name: nameNow, in_pass_hash: pass_hash_now });
+            await render();      // refresh grids
+            await renderMine();  // refresh own list
+          }catch(e){
+            console.error('cancel error:', e);
+            alert(e.message || 'Cancel failed');
+          } finally {
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Cancel';
+          }
+        });
 
+        row.innerHTML = `<div><b>${r.pc}</b> · ${slotLabel(r.start_iso, r.end_iso)}</div>`;
+        row.appendChild(cancelBtn);
         myList.appendChild(row);
       }
     }
@@ -410,14 +429,17 @@
       for(const r of rows){
         const div = document.createElement('div');
         div.className='flex items-center justify-between border-b border-slate-100 py-1.5';
-        div.innerHTML = `<div><b>${r.pc}</b> · ${slotLabel(r.start_iso, r.end_iso)} · ${maskName(r.name)}</div>`+
-                        `<button class="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500">Remove</button>`;
-        div.lastChild.addEventListener('click', async ()=>{
+        const btn = document.createElement('button');
+        btn.className='px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500';
+        btn.textContent='Remove';
+        btn.addEventListener('click', async ()=>{
           try{
             await rpcAdmin('removeReservation', { in_id: r.id });
             await renderAdminList(); await render(); await renderMine();
           }catch(e){ alert(e.message); }
         });
+        div.innerHTML = `<div><b>${r.pc}</b> · ${slotLabel(r.start_iso, r.end_iso)} · ${maskName(r.name)}</div>`;
+        div.appendChild(btn);
         adminList.appendChild(div);
       }
     };
@@ -480,7 +502,6 @@
     // init
     $$('.pcBtn').forEach(b=>{
       b.addEventListener('click', ()=>{
-        selectedPC = b.dataset.pc;
         $$('.pcBtn').forEach(x=>x.classList.remove('bg-slate-900','text-white'));
         b.classList.add('bg-slate-900','text-white');
       });
@@ -489,7 +510,6 @@
 
     regenBtn.addEventListener('click', ()=>{ render(); renderMine(); });
     datePicker.addEventListener('change', ()=>{ render(); renderMine(); });
-    nameInp.addEventListener('input', ()=>{ /* don’t auto-search to avoid hash churn */ });
 
     // first render
     render();
