@@ -228,10 +228,11 @@
       const { error } = await supa.rpc('reserve_slot', { in_date, in_pc, in_start_iso, in_end_iso, in_name, in_pass_hash });
       if (error) throw error;
     }
-    async function rpcCancel({ in_id, in_pass_hash }){
-      const { error } = await supa.rpc('cancel_slot', { in_id, in_pass_hash });
-      if (error) throw error;
-    }
+    async function rpcCancelByOwner({ in_id, in_name, in_pass_hash }){
+  const { error } = await supa.rpc('cancel_slot_by_owner', { in_id, in_name, in_pass_hash });
+  if (error) throw error;
+}
+
     async function rpcAdmin(action, payload){
       if (!adminSession) throw new Error('Admin not logged in');
 
@@ -376,12 +377,21 @@
           <button class="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-500">Cancel</button>
         `;
         row.lastChild.addEventListener('click', async ()=>{
-          try{
-            await rpcCancel({ in_id: r.id, in_pass_hash: pass_hash });
-            await render();      // refresh grids
-            await renderMine();  // refresh own list
-          }catch(e){ alert(e.message || 'Cancel failed'); }
-        });
+  try{
+    const nameNow = (nameInp.value || '').trim();
+    const codeNow = (codeInp.value || '').trim();
+    if (!nameNow || !codeNow) return alert('Enter your name and passcode above first.');
+    const pass_hash = await sha256(codeNow);
+
+    await rpcCancelByOwner({ in_id: r.id, in_name: nameNow, in_pass_hash: pass_hash });
+    await render();      // refresh grids
+    await renderMine();  // refresh own list
+  }catch(e){
+    alert(e.message || 'Cancel failed');
+    console.error(e);
+  }
+});
+
         myList.appendChild(row);
       }
     }
