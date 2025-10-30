@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Drone Lab — PC Reservation (Phone OTP)</title>
+  <title>Drone Lab — PC Reservation (Free Email Login)</title>
 
   <!-- Tailwind + Supabase -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -31,7 +31,7 @@
       <div>
         <h1 class="text-2xl sm:text-3xl font-bold">Drone Lab — PC Reservation</h1>
         <p class="text-sm text-slate-600">
-          Sign in with your <b>phone</b> (OTP). Admin can limit daily availability in real time.
+          Sign in with <b>email</b> (magic link or 6-digit code). Admin can limit hours in real time.
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -58,27 +58,31 @@
         <p id="closedMsg" class="hidden mt-2 text-sm text-rose-600">Reservations are disabled by admin.</p>
       </div>
 
-      <!-- Phone OTP auth -->
+      <!-- FREE email auth -->
       <div class="card bg-white p-4" id="authCard">
-        <h2 class="font-semibold text-lg mb-2">Sign in</h2>
+        <h2 class="font-semibold text-lg mb-2">Sign in (Free)</h2>
 
-        <div id="notAuthed" class="space-y-2">
-          <input id="phoneInput" placeholder="+9627XXXXXXXX" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
-          <div class="flex gap-2">
-            <button id="btnSendOtp" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Send code</button>
-            <span id="otpStatus" class="text-xs text-slate-500"></span>
+        <div id="notAuthed" class="space-y-3">
+          <input id="emailInput" type="email" placeholder="you@htu.edu.jo" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnSendMagic" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Send magic link</button>
+            <span class="text-xs text-slate-500">— or —</span>
+            <button id="btnSendEmailOtp" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Send 6-digit code</button>
+            <span id="emailStatus" class="text-xs text-slate-500"></span>
           </div>
 
           <div id="otpArea" class="hidden">
-            <input id="otpCode" placeholder="6-digit code" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
-            <button id="btnVerifyOtp" class="btn mt-2 px-3 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-500">Verify</button>
+            <div class="flex gap-2">
+              <input id="emailOtpCode" placeholder="Enter 6-digit code" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+              <button id="btnVerifyEmailOtp" class="btn px-3 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-500">Verify</button>
+            </div>
+            <p class="text-[11px] text-slate-500">If OTP is disabled in Supabase, use the magic link instead.</p>
           </div>
         </div>
 
         <div id="authed" class="hidden">
-          <div class="text-sm mb-2">
-            Signed in as <span id="whoami" class="font-medium"></span>
-          </div>
+          <div class="text-sm mb-2">Signed in as <span id="whoami" class="font-medium"></span></div>
           <div class="grid grid-cols-5 gap-2 mb-2">
             <input id="displayName" placeholder="Display name (optional)" class="col-span-3 px-3 py-2 rounded-lg border border-slate-300"/>
             <button id="saveDisplayName" class="btn col-span-2 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Save name</button>
@@ -86,7 +90,9 @@
           <button id="btnLogout" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Log out</button>
         </div>
 
-        <p class="text-xs text-slate-500 mt-2">We use your phone to identify you. Daily cap: 60 minutes.</p>
+        <p class="text-xs text-slate-500 mt-2">
+          We use your email to identify you. Daily cap: 60 minutes.
+        </p>
       </div>
 
       <div class="card bg-white p-4">
@@ -115,7 +121,7 @@
     <section class="grid md:grid-cols-2 gap-6 mb-6">
       <div class="card bg-white p-4">
         <h3 class="font-semibold mb-2">My reservations (selected date)</h3>
-        <p class="text-xs text-slate-500 mb-3">Sign in first. Your bookings will appear here automatically; you can cancel them.</p>
+        <p class="text-xs text-slate-500 mb-3">Sign in first. Your bookings appear here automatically; you can cancel them.</p>
         <div class="flex items-center gap-2 mb-3">
           <span id="mineCount" class="text-xs text-slate-500"></span>
         </div>
@@ -136,7 +142,7 @@
       </div>
     </section>
 
-    <footer class="mt-10 text-center text-xs text-slate-500">Server-backed via Supabase (phone OTP). Realtime updates enabled.</footer>
+    <footer class="mt-10 text-center text-xs text-slate-500">Server-backed via Supabase (email login). Realtime updates enabled.</footer>
   </div>
 
   <!-- Admin modal -->
@@ -201,17 +207,19 @@
     const myList   = $('#myList');
     const mineCount= $('#mineCount');
 
-    // Auth refs
-    const phoneInput = $('#phoneInput');
-    const btnSendOtp = $('#btnSendOtp');
-    const otpArea    = $('#otpArea');
-    const otpCode    = $('#otpCode');
-    const btnVerifyOtp = $('#btnVerifyOtp');
+    // Email auth refs
+    const emailInput = $('#emailInput');
+    const btnSendMagic = $('#btnSendMagic');
+    const btnSendEmailOtp = $('#btnSendEmailOtp');
+    const emailStatus = $('#emailStatus');
+    const otpArea = $('#otpArea');
+    const emailOtpCode = $('#emailOtpCode');
+    const btnVerifyEmailOtp = $('#btnVerifyEmailOtp');
+
     const notAuthed  = $('#notAuthed');
     const authed     = $('#authed');
     const whoami     = $('#whoami');
     const btnLogout  = $('#btnLogout');
-    const otpStatus  = $('#otpStatus');
     const displayNameInp = $('#displayName');
     const saveDisplayName = $('#saveDisplayName');
 
@@ -311,7 +319,6 @@
       const slots=[];
       const s = dayWindow.start_min, e = dayWindow.end_min;
       for(let m=s; m<e; m+=len){
-        // Build startISO at UTC minutes 'm'
         const d0 = new Date(`${date}T00:00:00Z`);
         const startISO = new Date(d0.getTime() + m*60000).toISOString();
         const endISO   = new Date(d0.getTime() + (m+len)*60000).toISOString();
@@ -332,19 +339,12 @@
     const listByPC = (resvs, pc)=> resvs.filter(r=>r.pc===pc).sort((a,b)=>a.start_iso.localeCompare(b.start_iso));
 
     // ===== auth UI =====
-    function maskPhone(p){
-      if(!p) return '';
-      const digits = p.replace(/\s/g,'');
-      if(digits.length < 6) return digits;
-      return digits.slice(0,4) + '****' + digits.slice(-4);
-    }
-
     async function refreshAuthUI(){
       const { data: { user } } = await supa.auth.getUser();
       if (user) {
         notAuthed.classList.add('hidden');
         authed.classList.remove('hidden');
-        whoami.textContent = maskPhone(user.phone || user.user_metadata?.phone_number);
+        whoami.textContent = user.email || '(no email?)';
         displayNameInp.value = (user.user_metadata?.display_name || '');
       } else {
         notAuthed.classList.remove('hidden');
@@ -353,28 +353,39 @@
       }
     }
 
-    btnSendOtp.addEventListener('click', async ()=>{
-      const phone = (phoneInput.value||'').trim();
-      if(!phone) return alert('Enter your phone (with country code).');
-      otpStatus.textContent = 'Sending…';
-      const { error } = await supa.auth.signInWithOtp({ phone }); // SMS channel
-      if (error) { otpStatus.textContent = error.message; return; }
-      otpStatus.textContent = 'Code sent';
+    btnSendMagic.addEventListener('click', async ()=>{
+      const email = (emailInput.value||'').trim();
+      if(!email) return alert('Enter your email.');
+      emailStatus.textContent = 'Sending magic link…';
+      const { error } = await supa.auth.signInWithOtp({
+        email,
+        options:{ shouldCreateUser: true, emailRedirectTo: window.location.href }
+      });
+      emailStatus.textContent = error ? error.message : 'Check your inbox for the sign-in link.';
+    });
+
+    btnSendEmailOtp.addEventListener('click', async ()=>{
+      const email = (emailInput.value||'').trim();
+      if(!email) return alert('Enter your email.');
+      emailStatus.textContent = 'Sending code…';
+      const { error } = await supa.auth.signInWithOtp({ email, options:{ shouldCreateUser: true }});
+      if (error) { emailStatus.textContent = error.message; return; }
+      emailStatus.textContent = 'Code sent. Enter it below.';
       otpArea.classList.remove('hidden');
     });
 
-    btnVerifyOtp.addEventListener('click', async ()=>{
-      const phone = (phoneInput.value||'').trim();
-      const token = (otpCode.value||'').trim();
-      if(!phone || !token) return;
-      const { error } = await supa.auth.verifyOtp({ phone, token, type:'sms' });
+    btnVerifyEmailOtp.addEventListener('click', async ()=>{
+      const email = (emailInput.value||'').trim();
+      const token = (emailOtpCode.value||'').trim();
+      if(!email || !token) return;
+      const { error } = await supa.auth.verifyOtp({ email, token, type:'email' });
       if (error) return alert(error.message);
       await refreshAuthUI();
       await render();
       await renderMine();
     });
 
-    btnLogout.addEventListener('click', async ()=>{
+    btnLogout?.addEventListener('click', async ()=>{
       await supa.auth.signOut();
       await refreshAuthUI();
       await render();
@@ -397,7 +408,7 @@
       clickBusy = true;
       try{
         const { data:{ user } } = await supa.auth.getUser();
-        if(!user) return alert('Please sign in with your phone first.');
+        if(!user) return alert('Please sign in first.');
         const display_name = (displayNameInp.value || '').trim() || null;
 
         await rpcReserve({ in_date: date, in_pc: pc, in_start_iso: sl.startISO, in_end_iso: sl.endISO, in_display_name: display_name });
@@ -415,7 +426,6 @@
       } else {
         dayWindow = { start_min: 570, end_min: 1020 }; // 09:30–17:00 default
       }
-      // reflect in admin inputs using local time display
       const toHHMM = (m)=> pad(Math.floor(m/60))+':'+pad(m%60);
       winStart.value = toHHMM(dayWindow.start_min);
       winEnd.value   = toHHMM(dayWindow.end_min);
@@ -573,7 +583,6 @@
     }
     toggleOpen.addEventListener('change', applyControlsChange);
     lock1.addEventListener('change', applyControlsChange);
-    lock2.addEventListener('change', applyControlsChange);
 
     btnWipeDay.addEventListener('click', async ()=>{
       const date = datePicker.value;
@@ -585,15 +594,15 @@
     });
 
     // Save day window: convert picked LOCAL times to UTC minutes for that date
+    const toHH = (d)=>d.getUTCHours()*60 + d.getUTCMinutes();
     btnSaveWindow.addEventListener('click', async ()=>{
-      const date = datePicker.value; // YYYY-MM-DD
+      const date = datePicker.value;
       const [sh, sm] = winStart.value.split(':').map(v=>parseInt(v,10));
       const [eh, em] = winEnd.value.split(':').map(v=>parseInt(v,10));
-
       const startLocal = new Date(`${date}T${pad(sh)}:${pad(sm)}:00`);
       const endLocal   = new Date(`${date}T${pad(eh)}:${pad(em)}:00`);
-      const in_start_min = startLocal.getUTCHours()*60 + startLocal.getUTCMinutes();
-      const in_end_min   = endLocal.getUTCHours()*60   + endLocal.getUTCMinutes();
+      const in_start_min = toHH(startLocal);
+      const in_end_min   = toHH(endLocal);
 
       try{
         await rpcAdmin('setDayWindow', { in_date: date, in_start_min, in_end_min });
@@ -603,8 +612,8 @@
     });
 
     // ===== realtime: auto-refresh when reservations change =====
-    const channel = supa.channel('reservations-live')
-      .on('postgres_changes', { event: '*', schema:'public', table:'reservations' }, async (_payload) => {
+    supa.channel('reservations-live')
+      .on('postgres_changes', { event: '*', schema:'public', table:'reservations' }, async () => {
         await render(); await renderMine();
       }).subscribe();
 
