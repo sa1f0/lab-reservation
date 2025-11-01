@@ -396,17 +396,29 @@
     }
     otpClose.addEventListener('click', closeOtpModal);
 
-    // Send OTP email
-    btnOtpSend.addEventListener('click', async ()=>{
-      const email = (otpEmail.value||'').trim();
-      if(!email) return alert('Enter your email.');
-      otpSendStatus.textContent = 'Sending…';
-      const { error } = await supa.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname }
-      });
-      otpSendStatus.textContent = error ? error.message : 'Code sent. Check your inbox.';
-    });
+// Send OTP email
+btnOtpSend.addEventListener('click', async ()=>{
+  const email = (otpEmail.value || '').trim();
+  if (!email) return alert('Enter your email.');
+
+  otpSendStatus.textContent = 'Sending…';
+
+  // ✅ Always redirect back to your hosted site (not localhost)
+  const APP_URL = 'https://sa1f0.github.io/lab-reservation/';
+
+  const { error } = await supa.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: APP_URL
+    }
+  });
+
+  otpSendStatus.textContent = error
+    ? error.message
+    : 'Code sent. Check your inbox.';
+});
+
 
     // Verify & Book
     btnOtpVerify.addEventListener('click', async ()=>{
