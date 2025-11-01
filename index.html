@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Drone Lab — PC Reservation (OTP Only)</title>
+  <title>DRONE Lab — PC Reservation (OTP Only)</title>
 
   <!-- Tailwind + Supabase -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -26,50 +26,51 @@
 </head>
 <body class="bg-slate-50 text-slate-800">
   <div class="max-w-6xl mx-auto p-4 sm:p-8">
+
+    <!-- Header -->
     <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-  <div class="flex items-center gap-3">
-    <!-- logo placeholder -->
-    <div class="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 text-lg font-semibold">
-      LOGO
-    </div>
-    <div>
-      <h1 class="text-3xl font-bold tracking-tight">DRONE Lab — PC Reservation</h1>
-      <p class="text-sm text-slate-600">
-        Click any free slot below. You’ll receive a 6-digit verification code by email; enter it to confirm your booking.
-      </p>
-    </div>
-  </div>
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 text-lg font-semibold">
+          LOGO
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight">DRONE Lab — PC Reservation</h1>
+          <p class="text-sm text-slate-600">
+            Click any free slot. We’ll email you a 6-digit code; enter it to confirm your booking.
+          </p>
+        </div>
+      </div>
 
-  <!-- banner placeholder -->
-  <div class="w-full sm:w-64 h-16 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 text-xs">
-    Banner (coming soon)
-  </div>
-</header>
+      <div class="flex items-center gap-3">
+        <div class="w-40 h-12 bg-slate-100 rounded-lg hidden sm:flex items-center justify-center text-slate-400 text-xs">
+          Banner (coming soon)
+        </div>
+        <button id="btnAdmin" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Admin</button>
+      </div>
+    </header>
 
-<section class="grid md:grid-cols-2 gap-6 mb-6">
-  <div class="card bg-white p-4">
-    <h2 class="font-semibold text-lg mb-2">Select Date</h2>
-    <input id="datePicker" type="date" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
-    <span class="mt-3 inline-flex items-center gap-2 text-sm">
-      <span>Reservations status:</span>
-      <span id="openBadge" class="px-2 py-0.5 text-xs rounded-full bg-slate-200 text-slate-800">…</span>
-    </span>
-    <p id="closedMsg" class="hidden mt-2 text-sm text-rose-600">Reservations are disabled by admin.</p>
-  </div>
+    <!-- Top controls -->
+    <section class="grid md:grid-cols-2 gap-6 mb-6">
+      <div class="card bg-white p-4">
+        <h2 class="font-semibold text-lg mb-2">Select Date</h2>
+        <input id="datePicker" type="date" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+        <span class="mt-3 inline-flex items-center gap-2 text-sm">
+          <span>Status:</span>
+          <span id="openBadge" class="px-2 py-0.5 text-xs rounded-full bg-slate-200 text-slate-800">…</span>
+        </span>
+        <p id="closedMsg" class="hidden mt-2 text-sm text-rose-600">Reservations are disabled by admin.</p>
+      </div>
 
-  <div class="card bg-white p-4">
-    <h2 class="font-semibold text-lg mb-2">Your Details</h2>
-    <div class="space-y-2">
-      <input id="displayName" placeholder="Display name (optional)" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
-      <input id="otpEmail" type="email" placeholder="Email for verification" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
-    </div>
-    <div class="flex items-center gap-2 mt-3">
-      <button id="btnOtpSend" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Send 6-digit Code</button>
-      <span id="otpSendStatus" class="text-xs text-slate-500"></span>
-    </div>
-  </div>
-</section>
-
+      <div class="card bg-white p-4">
+        <h2 class="font-semibold text-lg mb-2">Your Details</h2>
+        <div class="space-y-2">
+          <input id="displayName" placeholder="Display name (optional)" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-2">
+          You’ll be asked for your email & code when booking a slot.
+        </p>
+      </div>
+    </section>
 
     <!-- Slots grids -->
     <section class="grid md:grid-cols-2 gap-6 mb-6" id="grids">
@@ -86,8 +87,11 @@
     <!-- My reservations + Admin day window -->
     <section class="grid md:grid-cols-2 gap-6 mb-6">
       <div class="card bg-white p-4">
-        <h3 class="font-semibold mb-2">My reservations (selected date)</h3>
-        <p class="text-xs text-slate-500 mb-3">After OTP verification, your bookings appear here automatically; you can cancel them.</p>
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold mb-2">My reservations (selected date)</h3>
+          <button id="btnFindMine" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Refresh</button>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">After OTP verification, your bookings appear here; you can cancel them.</p>
         <div class="flex items-center gap-2 mb-3">
           <span id="mineCount" class="text-xs text-slate-500"></span>
         </div>
@@ -95,8 +99,9 @@
       </div>
 
       <div class="card bg-white p-4">
-        <h3 class="font-semibold mb-2">Admin: Day availability (selected date)</h3>
-        <p class="text-xs text-slate-500 mb-3">Set the ONLY bookable window. (We convert your local time to UTC.)</p>
+        <h3 class="font-semibold mb-2">Admin: Settings for this date</h3>
+        <p class="text-xs text-slate-500 mb-3">Set the only bookable window. (Local time is converted to UTC.)</p>
+
         <div class="flex items-center gap-3 mb-3">
           <label class="text-sm">Start</label>
           <input id="winStart" type="time" class="px-2 py-1 rounded-lg border border-slate-300" value="09:30">
@@ -104,7 +109,22 @@
           <input id="winEnd" type="time" class="px-2 py-1 rounded-lg border border-slate-300" value="17:00">
           <button id="btnSaveWindow" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Save</button>
         </div>
-        <p class="text-xs text-slate-500">Slots outside this window are disabled (client) and rejected (server).</p>
+
+        <div class="flex items-center gap-3 mb-3">
+          <label class="text-sm">Max daily minutes per user</label>
+          <input id="maxMinutes" type="number" min="15" step="15" class="px-2 py-1 rounded-lg border border-slate-300 w-28" value="60">
+          <button id="btnSaveMax" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Save max</button>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <label class="text-sm">Reservations open</label>
+          <input id="toggleOpen" type="checkbox" class="h-4 w-4">
+          <label class="text-sm ml-4">Lock PC-1</label>
+          <input id="lock1" type="checkbox" class="h-4 w-4">
+          <label class="text-sm ml-4">Lock PC-2</label>
+          <input id="lock2" type="checkbox" class="h-4 w-4">
+          <button id="btnSaveToggles" class="btn ml-auto px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Save toggles</button>
+        </div>
       </div>
     </section>
 
@@ -126,21 +146,9 @@
         </div>
       </div>
       <div id="adminPanel" class="hidden">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-3">
-            <label class="text-sm">Reservations open</label>
-            <input id="toggleOpen" type="checkbox" class="h-4 w-4">
-          </div>
-          <div class="flex items-center gap-3">
-            <label class="text-sm">Lock PC-1</label>
-            <input id="lock1" type="checkbox" class="h-4 w-4">
-            <label class="text-sm">Lock PC-2</label>
-            <input id="lock2" type="checkbox" class="h-4 w-4">
-          </div>
-        </div>
         <div class="grid md:grid-cols-2 gap-4">
           <div class="border border-slate-200 rounded-lg p-3">
-            <h4 class="font-semibold mb-2">Search & remove</h4>
+            <h4 class="font-semibold mb-2">Search & remove (selected date)</h4>
             <input id="searchName" placeholder="Search by display name" class="w-full px-3 py-2 rounded-lg border border-slate-300 mb-2"/>
             <div id="adminList" class="max-h-64 overflow-auto text-sm"></div>
           </div>
@@ -181,6 +189,7 @@
     </div>
   </div>
 
+  <!-- JS -->
   <script>
     /* ===== utils ===== */
     const $  = (s, el=document)=>el.querySelector(s);
@@ -191,22 +200,28 @@
 
     /* ===== refs ===== */
     const datePicker = $('#datePicker');
-    const slotLenSel = $('#slotLen');
     const openBadge  = $('#openBadge');
     const closedMsg  = $('#closedMsg');
 
     const grid1 = $('#grid-PC-1');
     const grid2 = $('#grid-PC-2');
 
+    const displayNameInp = $('#displayName');
+
+    const btnFindMine = $('#btnFindMine');
     const myList   = $('#myList');
     const mineCount= $('#mineCount');
 
-    const acctNot = $('#acctNot');
-    const acctYes = $('#acctYes');
-    const whoami  = $('#whoami');
-    const displayNameInp = $('#displayName');
-    const saveDisplayName = $('#saveDisplayName');
-    const btnLogout = $('#btnLogout');
+    // Admin settings on page
+    const winStart = $('#winStart');
+    const winEnd   = $('#winEnd');
+    const btnSaveWindow = $('#btnSaveWindow');
+    const maxMinutesInp = $('#maxMinutes');
+    const btnSaveMax = $('#btnSaveMax');
+    const toggleOpen = $('#toggleOpen');
+    const lock1 = $('#lock1');
+    const lock2 = $('#lock2');
+    const btnSaveToggles = $('#btnSaveToggles');
 
     // Admin modal
     const adminModal = $('#adminModal');
@@ -217,17 +232,9 @@
     const adminEmail = $('#adminEmail');
     const adminPass = $('#adminPass');
     const btnAdminLogin = $('#btnAdminLogin');
-
-    const toggleOpen = $('#toggleOpen');
-    const lock1 = $('#lock1');
-    const lock2 = $('#lock2');
     const searchName = $('#searchName');
     const adminList = $('#adminList');
     const btnWipeDay = $('#btnWipeDay');
-
-    const winStart = $('#winStart');
-    const winEnd   = $('#winEnd');
-    const btnSaveWindow = $('#btnSaveWindow');
 
     // OTP modal
     const otpModal = $('#otpModal');
@@ -241,10 +248,11 @@
 
     /* ===== state ===== */
     let adminSession = null;
-    let clickBusy = false;
     let pendingSlot = null; // { date, pc, startISO, endISO, display_name }
-    // default visible window if no rule exists (09:30–17:00)
+    // default window if no rule exists (09:30–17:00)
     let dayWindow = { start_min: 570, end_min: 1020 };
+    // default minutes if not set in controls
+    let maxDailyMinutes = 60;
 
     datePicker.value = todayStr();
 
@@ -288,27 +296,9 @@
       }
     }
 
-    /* ===== PC button visuals ===== */
-    function updatePcButtons(active) {
-      $$('.pcBtn').forEach(btn=>{
-        btn.classList.remove('bg-sky-600','bg-violet-600','text-white','ring-2','ring-offset-2','ring-sky-300','ring-violet-300');
-        btn.classList.add('bg-white','text-slate-800','border','border-slate-200');
-        if (btn.dataset.pc === 'PC-1' && active === 'PC-1') {
-          btn.classList.remove('bg-white','border','border-slate-200');
-          btn.classList.add('bg-sky-600','text-white','ring-2','ring-offset-2','ring-sky-300');
-        }
-        if (btn.dataset.pc === 'PC-2' && active === 'PC-2') {
-          btn.classList.remove('bg-white','border','border-slate-200');
-          btn.classList.add('bg-violet-600','text-white','ring-2','ring-offset-2','ring-violet-300');
-        }
-      });
-    }
-    $$('.pcBtn').forEach(b=> b.addEventListener('click', ()=> updatePcButtons(b.dataset.pc)));
-    updatePcButtons('PC-1');
-
-    /* ===== slot helpers ===== */
+    /* ===== slots ===== */
     function generateSlots(date){
-      const len = Number(slotLenSel.value);
+      const len = 30; // fixed 30-minute slots
       const slots=[];
       const s = dayWindow.start_min, e = dayWindow.end_min;
       for(let m=s; m<e; m+=len){
@@ -331,36 +321,6 @@
     };
     const listByPC = (resvs, pc)=> resvs.filter(r=>r.pc===pc).sort((a,b)=>a.start_iso.localeCompare(b.start_iso));
 
-    /* ===== account UI ===== */
-    async function refreshAuthUI(){
-      const { data: { user } } = await supa.auth.getUser();
-      if (user) {
-        acctNot.classList.add('hidden');
-        acctYes.classList.remove('hidden');
-        whoami.textContent = user.email || '(no email?)';
-        displayNameInp.value = (user.user_metadata?.display_name || '');
-      } else {
-        acctNot.classList.remove('hidden');
-        acctYes.classList.add('hidden');
-        whoami.textContent = '';
-      }
-    }
-    btnLogout?.addEventListener('click', async ()=>{
-      await supa.auth.signOut();
-      await refreshAuthUI();
-      await render();
-      myList.innerHTML=''; mineCount.textContent='';
-    });
-    saveDisplayName.addEventListener('click', async ()=>{
-      const { data: { user } } = await supa.auth.getUser();
-      if(!user) return alert('Sign in first');
-      const display_name = (displayNameInp.value||'').trim().slice(0,40);
-      const { error } = await supa.auth.updateUser({ data: { display_name }});
-      if(error) return alert(error.message);
-      alert('Saved name');
-      await refreshAuthUI();
-    });
-
     /* ===== OTP modal ===== */
     function openOtpModal(slotInfo){
       pendingSlot = slotInfo;
@@ -377,52 +337,68 @@
     }
     otpClose.addEventListener('click', closeOtpModal);
 
-    // Send the OTP **code** email (no links used)
-    // Send the OTP **code** email (no magic link)
-btnOtpSend.addEventListener('click', async ()=>{
-  const email = (otpEmail.value || '').trim();
-  if (!email) return alert('Enter your email.');
-  otpSendStatus.textContent = 'Sending…';
+    // OTP-only flow (no links)
+    btnOtpSend.addEventListener('click', async ()=>{
+      const email = (otpEmail.value || '').trim();
+      if (!email) return alert('Enter your email.');
+      btnOtpSend.disabled = true;
+      otpSendStatus.textContent = 'Sending…';
+      try{
+        const { error } = await supa.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: true } // no redirect => code email
+        });
+        if (error) throw error;
+        otpSendStatus.textContent = 'Code sent. Check your inbox.';
+      }catch(e){
+        otpSendStatus.textContent = e.message || 'Failed to send code';
+      }finally{
+        btnOtpSend.disabled = false;
+      }
+    });
 
-  const { error } = await supa.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: true } // <-- no emailRedirectTo here
-  });
+    btnOtpVerify.addEventListener('click', async ()=>{
+      const email = (otpEmail.value||'').trim();
+      const token = (otpCode.value||'').trim();
+      if (!email || !token) return alert('Enter the code sent to your email.');
+      if (!pendingSlot) return alert('No slot pending. Close and try again.');
 
-  otpSendStatus.textContent = error ? error.message : 'Code sent. Check your inbox.';
-});
+      btnOtpVerify.disabled = true;
+      btnOtpVerify.textContent = 'Verifying…';
 
-// Verify the 6-digit code, then book
-btnOtpVerify.addEventListener('click', async ()=>{
-  const email = (otpEmail.value||'').trim();
-  const token = (otpCode.value||'').trim();
-  if (!email || !token) return alert('Enter the code sent to your email.');
-  if (!pendingSlot) return alert('No slot pending. Close and try again.');
+      try{
+        // Sign in
+        const { error } = await supa.auth.verifyOtp({ email, token, type: 'email' });
+        if (error) throw error;
 
-  const { error } = await supa.auth.verifyOtp({ email, token, type: 'email' });
-  if (error) return alert(error.message);
+        // Reserve
+        const display_name = (displayNameInp?.value || '').trim() || null;
+        await rpcReserve({
+          in_date: pendingSlot.date,
+          in_pc: pendingSlot.pc,
+          in_start_iso: pendingSlot.startISO,
+          in_end_iso: pendingSlot.endISO,
+          in_display_name: display_name
+        });
 
-  const display_name = (document.querySelector('#displayName')?.value || '').trim() || null;
-  await rpcReserve({
-    in_date: pendingSlot.date,
-    in_pc: pendingSlot.pc,
-    in_start_iso: pendingSlot.startISO,
-    in_end_iso: pendingSlot.endISO,
-    in_display_name: display_name
-  });
-
-  closeOtpModal();
-  await render();
-  await renderMine();
-  alert('Reservation confirmed ✅');
-});
-
+        closeOtpModal();
+        await render();
+        await renderMine();
+        alert('Reservation confirmed ✅');
+      }catch(e){
+        alert(e.message || 'Verification or reservation failed');
+      }finally{
+        btnOtpVerify.disabled = false;
+        btnOtpVerify.textContent = 'Verify & Book';
+      }
+    });
 
     /* ===== rendering ===== */
     async function refreshDayWindow(){
       const date = datePicker.value;
       const rule = await getDayRule(date);
       dayWindow = rule ? { start_min: rule.start_min, end_min: rule.end_min } : { start_min: 570, end_min: 1020 };
+      // reflect to inputs
       const toHHMM = (m)=> pad(Math.floor(m/60))+':'+pad(m%60);
       winStart.value = toHHMM(dayWindow.start_min);
       winEnd.value   = toHHMM(dayWindow.end_min);
@@ -433,9 +409,12 @@ btnOtpVerify.addEventListener('click', async ()=>{
       const [controls, resvs] = await Promise.all([getControls(), getReservations(date)]);
       await refreshDayWindow();
 
+      // status + max minutes
       openBadge.textContent = controls.open ? 'Open' : 'Closed';
       openBadge.className = 'px-2 py-0.5 text-xs rounded-full ' + (controls.open?'bg-emerald-100 text-emerald-800':'bg-rose-100 text-rose-800');
       closedMsg.classList.toggle('hidden', controls.open);
+      maxDailyMinutes = Number(controls.max_minutes || 60);
+      maxMinutesInp.value = String(maxDailyMinutes);
 
       const slots = generateSlots(date);
       const grids = { 'PC-1': grid1, 'PC-2': grid2 };
@@ -469,19 +448,7 @@ btnOtpVerify.addEventListener('click', async ()=>{
 
           if(!isReserved){
             btn.addEventListener('click', async ()=>{
-              const { data:{ user } } = await supa.auth.getUser();
-              if (user) {
-                // already signed in -> reserve immediately
-                const display_name = (displayNameInp?.value || '').trim() || null;
-                try{
-                  await rpcReserve({ in_date: date, in_pc: pc, in_start_iso: sl.startISO, in_end_iso: sl.endISO, in_display_name: display_name });
-                  await render(); await renderMine();
-                }catch(e){ alert(e.message || 'Error making reservation'); }
-              } else {
-                // open OTP modal
-                const display_name = (displayNameInp?.value || '').trim() || null;
-                openOtpModal({ date, pc, startISO: sl.startISO, endISO: sl.endISO, display_name });
-              }
+              openOtpModal({ date, pc, startISO: sl.startISO, endISO: sl.endISO });
             });
           }
           g.appendChild(btn);
@@ -494,7 +461,7 @@ btnOtpVerify.addEventListener('click', async ()=>{
       myList.innerHTML = '';
       mineCount.textContent = '';
       const { data:{ user } } = await supa.auth.getUser();
-      if(!user) { mineCount.textContent = 'Sign in to view'; return; }
+      if(!user) { mineCount.textContent = 'Not signed in yet'; return; }
 
       const date = datePicker.value;
       const resvs = await getReservations(date);
@@ -525,6 +492,7 @@ btnOtpVerify.addEventListener('click', async ()=>{
         myList.appendChild(row);
       }
     }
+    $('#btnFindMine').addEventListener('click', renderMine);
 
     /* ===== admin modal & actions ===== */
     const renderAdminList = async ()=>{
@@ -553,6 +521,7 @@ btnOtpVerify.addEventListener('click', async ()=>{
       }
     };
 
+    // Open/close admin modal
     btnAdmin.addEventListener('click', async ()=>{
       const { data } = await supa.auth.getSession();
       adminSession = data.session || null;
@@ -560,11 +529,7 @@ btnOtpVerify.addEventListener('click', async ()=>{
       adminLogin.classList.toggle('hidden', !!adminSession);
       adminPanel.classList.toggle('hidden', !adminSession);
       if (adminSession) {
-        try {
-          const c = await getControls();
-          toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
-          await renderAdminList();
-        } catch (e) {}
+        await renderAdminList();
       }
     });
     closeAdmin.addEventListener('click', ()=>{
@@ -576,25 +541,33 @@ btnOtpVerify.addEventListener('click', async ()=>{
         if(error) throw error;
         adminSession = data.session;
         adminLogin.classList.add('hidden'); adminPanel.classList.remove('hidden');
-        const c = await getControls();
-        toggleOpen.checked = !!c.open; lock1.checked = !!c.lock_pc1; lock2.checked = !!c.lock_pc2;
         await renderAdminList();
       }catch(err){ alert(err.message||'Login failed'); }
     });
 
-    async function applyControlsChange(){
+    // Admin page controls (max minutes + toggles + window)
+    btnSaveMax.addEventListener('click', async ()=>{
       try{
         await rpcAdmin('setControls', {
           in_open: toggleOpen.checked,
           in_lock1: lock1.checked,
-          in_lock2: lock2.checked
+          in_lock2: lock2.checked,
+          in_max_minutes: Number(maxMinutesInp.value || 60)
         });
-        await render(); await renderAdminList(); await renderMine();
+        alert('Max minutes saved ✅');
       }catch(e){ alert(e.message); }
-    }
-    toggleOpen.addEventListener('change', applyControlsChange);
-    lock1.addEventListener('change', applyControlsChange);
-    lock2.addEventListener('change', applyControlsChange);
+    });
+    btnSaveToggles.addEventListener('click', async ()=>{
+      try{
+        await rpcAdmin('setControls', {
+          in_open: toggleOpen.checked,
+          in_lock1: lock1.checked,
+          in_lock2: lock2.checked,
+          in_max_minutes: Number(maxMinutesInp.value || 60)
+        });
+        alert('Toggles saved ✅');
+      }catch(e){ alert(e.message); }
+    });
 
     btnWipeDay.addEventListener('click', async ()=>{
       const date = datePicker.value;
@@ -629,11 +602,8 @@ btnOtpVerify.addEventListener('click', async ()=>{
         await render(); await renderMine();
       }).subscribe();
 
-    // auth changes
-    supa.auth.onAuthStateChange((_event, session)=>{ adminSession = session; refreshAuthUI(); });
-
     // initial render
-    (async ()=>{ await refreshAuthUI(); await render(); await renderMine(); })();
+    (async ()=>{ await render(); await renderMine(); })();
   </script>
 </body>
 </html>
