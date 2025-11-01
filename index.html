@@ -27,62 +27,49 @@
 <body class="bg-slate-50 text-slate-800">
   <div class="max-w-6xl mx-auto p-4 sm:p-8">
     <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-      <div>
-        <h1 class="text-2xl sm:text-3xl font-bold">Drone Lab — PC Reservation</h1>
-        <p class="text-sm text-slate-600">
-          Click a free slot. We’ll send a <b>6-digit OTP</b> to confirm and book. No links, no passwords.
-        </p>
-      </div>
-      <div class="flex items-center gap-2">
-        <button id="btnAdmin" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Admin</button>
-      </div>
-    </header>
+  <div class="flex items-center gap-3">
+    <!-- logo placeholder -->
+    <div class="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 text-lg font-semibold">
+      LOGO
+    </div>
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">DRONE Lab — PC Reservation</h1>
+      <p class="text-sm text-slate-600">
+        Click any free slot below. You’ll receive a 6-digit verification code by email; enter it to confirm your booking.
+      </p>
+    </div>
+  </div>
 
-    <!-- Top controls -->
-    <section class="grid md:grid-cols-3 gap-6 mb-6">
-      <div class="card bg-white p-4">
-        <h2 class="font-semibold text-lg mb-2">Date</h2>
-        <input id="datePicker" type="date" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
-        <div class="mt-4 flex gap-2 items-center">
-          <label class="text-sm">Slot length</label>
-          <select id="slotLen" class="px-2 py-1 rounded-lg border border-slate-300">
-            <option value="30" selected>30 min</option>
-            <option value="60">60 min</option>
-          </select>
-          <span class="ml-auto text-sm flex items-center gap-2">
-            <span>Status:</span>
-            <span id="openBadge" class="px-2 py-0.5 text-xs rounded-full bg-slate-200 text-slate-800">…</span>
-          </span>
-        </div>
-        <p id="closedMsg" class="hidden mt-2 text-sm text-rose-600">Reservations are disabled by admin.</p>
-      </div>
+  <!-- banner placeholder -->
+  <div class="w-full sm:w-64 h-16 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 text-xs">
+    Banner (coming soon)
+  </div>
+</header>
 
-      <!-- Account (optional) -->
-      <div class="card bg-white p-4">
-        <h2 class="font-semibold text-lg mb-2">Account</h2>
-        <div id="acctNot" class="text-sm text-slate-600">
-          No account needed before booking — you’ll verify via OTP when you choose a slot.
-        </div>
-        <div id="acctYes" class="hidden">
-          <div class="text-sm mb-2">Signed in as <span id="whoami" class="font-medium"></span></div>
-          <div class="grid grid-cols-5 gap-2 mb-2">
-            <input id="displayName" placeholder="Display name (optional)" class="col-span-3 px-3 py-2 rounded-lg border border-slate-300"/>
-            <button id="saveDisplayName" class="btn col-span-2 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Save name</button>
-          </div>
-          <button id="btnLogout" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Log out</button>
-        </div>
-        <p class="text-[11px] text-slate-500 mt-2">Daily cap: 60 minutes per user.</p>
-      </div>
+<section class="grid md:grid-cols-2 gap-6 mb-6">
+  <div class="card bg-white p-4">
+    <h2 class="font-semibold text-lg mb-2">Select Date</h2>
+    <input id="datePicker" type="date" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+    <span class="mt-3 inline-flex items-center gap-2 text-sm">
+      <span>Reservations status:</span>
+      <span id="openBadge" class="px-2 py-0.5 text-xs rounded-full bg-slate-200 text-slate-800">…</span>
+    </span>
+    <p id="closedMsg" class="hidden mt-2 text-sm text-rose-600">Reservations are disabled by admin.</p>
+  </div>
 
-      <div class="card bg-white p-4">
-        <h2 class="font-semibold text-lg mb-2">PCs</h2>
-        <div class="flex gap-2">
-          <button data-pc="PC-1" class="pcBtn px-3 py-2 rounded-lg bg-sky-600 text-white ring-2 ring-offset-2 ring-sky-300">PC-1</button>
-          <button data-pc="PC-2" class="pcBtn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">PC-2</button>
-        </div>
-        <p class="text-xs text-slate-500 mt-2">Reserved slots are greyed out and disabled.</p>
-      </div>
-    </section>
+  <div class="card bg-white p-4">
+    <h2 class="font-semibold text-lg mb-2">Your Details</h2>
+    <div class="space-y-2">
+      <input id="displayName" placeholder="Display name (optional)" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+      <input id="otpEmail" type="email" placeholder="Email for verification" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+    </div>
+    <div class="flex items-center gap-2 mt-3">
+      <button id="btnOtpSend" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Send 6-digit Code</button>
+      <span id="otpSendStatus" class="text-xs text-slate-500"></span>
+    </div>
+  </div>
+</section>
+
 
     <!-- Slots grids -->
     <section class="grid md:grid-cols-2 gap-6 mb-6" id="grids">
