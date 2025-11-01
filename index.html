@@ -391,47 +391,45 @@
     otpClose.addEventListener('click', closeOtpModal);
 
     // Send the OTP **code** email (no links used)
-    btnOtpSend.addEventListener('click', async ()=>{
-      const email = (otpEmail.value || '').trim();
-      if(!email) return alert('Enter your email.');
-      otpSendStatus.textContent = 'Sending…';
-      const { error } = await supa.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: true } // <- no emailRedirectTo, we want CODE email
-      });
-      otpSendStatus.textContent = error ? error.message : 'Code sent. Check your inbox.';
-    });
+    // Send the OTP **code** email (no magic link)
+btnOtpSend.addEventListener('click', async ()=>{
+  const email = (otpEmail.value || '').trim();
+  if (!email) return alert('Enter your email.');
+  otpSendStatus.textContent = 'Sending…';
 
-    // Verify code, then book the exact pending slot
-    btnOtpVerify.addEventListener('click', async ()=>{
-      const email = (otpEmail.value||'').trim();
-      const token = (otpCode.value||'').trim();
-      if(!email || !token) return alert('Enter the code sent to your email.');
-      if(!pendingSlot) return alert('No slot pending. Close and try again.');
+  const { error } = await supa.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true } // <-- no emailRedirectTo here
+  });
 
-      // 1) Verifies + signs the user in (creates a session)
-      const { error } = await supa.auth.verifyOtp({ email, token, type: 'email' });
-      if (error) return alert(error.message);
+  otpSendStatus.textContent = error ? error.message : 'Code sent. Check your inbox.';
+});
 
-      // 2) Book
-      try{
-        const display_name = (displayNameInp?.value || '').trim() || null;
-        await rpcReserve({
-          in_date: pendingSlot.date,
-          in_pc: pendingSlot.pc,
-          in_start_iso: pendingSlot.startISO,
-          in_end_iso: pendingSlot.endISO,
-          in_display_name: display_name
-        });
-        closeOtpModal();
-        await refreshAuthUI();
-        await render();
-        await renderMine();
-        alert('Reservation confirmed ✅');
-      }catch(e){
-        alert(e.message || 'Failed to reserve');
-      }
-    });
+// Verify the 6-digit code, then book
+btnOtpVerify.addEventListener('click', async ()=>{
+  const email = (otpEmail.value||'').trim();
+  const token = (otpCode.value||'').trim();
+  if (!email || !token) return alert('Enter the code sent to your email.');
+  if (!pendingSlot) return alert('No slot pending. Close and try again.');
+
+  const { error } = await supa.auth.verifyOtp({ email, token, type: 'email' });
+  if (error) return alert(error.message);
+
+  const display_name = (document.querySelector('#displayName')?.value || '').trim() || null;
+  await rpcReserve({
+    in_date: pendingSlot.date,
+    in_pc: pendingSlot.pc,
+    in_start_iso: pendingSlot.startISO,
+    in_end_iso: pendingSlot.endISO,
+    in_display_name: display_name
+  });
+
+  closeOtpModal();
+  await render();
+  await renderMine();
+  alert('Reservation confirmed ✅');
+});
+
 
     /* ===== rendering ===== */
     async function refreshDayWindow(){
