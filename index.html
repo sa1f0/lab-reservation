@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Drone Lab — PC Reservation (Free Email Login)</title>
+  <title>Drone Lab — PC Reservation (OTP on Booking)</title>
 
   <!-- Tailwind + Supabase -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -31,7 +31,7 @@
       <div>
         <h1 class="text-2xl sm:text-3xl font-bold">Drone Lab — PC Reservation</h1>
         <p class="text-sm text-slate-600">
-          Sign in with <b>email</b> (magic link or 6-digit code). Admin can limit hours in real time.
+          Click a free slot. If you’re not signed in, we’ll send a <b>6-digit OTP to your email</b> to confirm and book.
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -58,30 +58,13 @@
         <p id="closedMsg" class="hidden mt-2 text-sm text-rose-600">Reservations are disabled by admin.</p>
       </div>
 
-      <!-- FREE email auth -->
-      <div class="card bg-white p-4" id="authCard">
-        <h2 class="font-semibold text-lg mb-2">Sign in (Free)</h2>
-
-        <div id="notAuthed" class="space-y-3">
-          <input id="emailInput" type="email" placeholder="you@htu.edu.jo" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
-
-          <div class="flex flex-wrap items-center gap-2">
-            <button id="btnSendMagic" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Send magic link</button>
-            <span class="text-xs text-slate-500">— or —</span>
-            <button id="btnSendEmailOtp" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Send 6-digit code</button>
-            <span id="emailStatus" class="text-xs text-slate-500"></span>
-          </div>
-
-          <div id="otpArea" class="hidden">
-            <div class="flex gap-2">
-              <input id="emailOtpCode" placeholder="Enter 6-digit code" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
-              <button id="btnVerifyEmailOtp" class="btn px-3 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-500">Verify</button>
-            </div>
-            <p class="text-[11px] text-slate-500">If OTP is disabled in Supabase, use the magic link instead.</p>
-          </div>
+      <!-- Account (optional) -->
+      <div class="card bg-white p-4">
+        <h2 class="font-semibold text-lg mb-2">Account</h2>
+        <div id="acctNot" class="text-sm text-slate-600">
+          You don’t need an account first—just click a slot and verify with a one-time code.
         </div>
-
-        <div id="authed" class="hidden">
+        <div id="acctYes" class="hidden">
           <div class="text-sm mb-2">Signed in as <span id="whoami" class="font-medium"></span></div>
           <div class="grid grid-cols-5 gap-2 mb-2">
             <input id="displayName" placeholder="Display name (optional)" class="col-span-3 px-3 py-2 rounded-lg border border-slate-300"/>
@@ -89,10 +72,7 @@
           </div>
           <button id="btnLogout" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Log out</button>
         </div>
-
-        <p class="text-xs text-slate-500 mt-2">
-          We use your email to identify you. Daily cap: 60 minutes.
-        </p>
+        <p class="text-[11px] text-slate-500 mt-2">Daily cap: 60 minutes per user.</p>
       </div>
 
       <div class="card bg-white p-4">
@@ -121,7 +101,7 @@
     <section class="grid md:grid-cols-2 gap-6 mb-6">
       <div class="card bg-white p-4">
         <h3 class="font-semibold mb-2">My reservations (selected date)</h3>
-        <p class="text-xs text-slate-500 mb-3">Sign in first. Your bookings appear here automatically; you can cancel them.</p>
+        <p class="text-xs text-slate-500 mb-3">After you verify once, your bookings appear here automatically; you can cancel them.</p>
         <div class="flex items-center gap-2 mb-3">
           <span id="mineCount" class="text-xs text-slate-500"></span>
         </div>
@@ -142,7 +122,7 @@
       </div>
     </section>
 
-    <footer class="mt-10 text-center text-xs text-slate-500">Server-backed via Supabase (email login). Realtime updates enabled.</footer>
+    <footer class="mt-10 text-center text-xs text-slate-500">Server-backed via Supabase. OTP required for first booking.</footer>
   </div>
 
   <!-- Admin modal -->
@@ -187,6 +167,34 @@
     </div>
   </div>
 
+  <!-- OTP Modal -->
+  <div id="otpModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4 z-50">
+    <div class="w-full max-w-md card bg-white p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold">Confirm your slot</h3>
+        <button id="otpClose" class="px-2 py-1 text-slate-500 hover:text-slate-700">✕</button>
+      </div>
+
+      <div class="text-sm text-slate-600 mb-3" id="otpSlotLabel">Slot: —</div>
+
+      <div class="space-y-3">
+        <input id="otpEmail" type="email" placeholder="you@htu.edu.jo" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnOtpSend" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Send 6-digit code</button>
+          <span id="otpSendStatus" class="text-xs text-slate-500"></span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input id="otpCode" placeholder="Enter code" class="w-full px-3 py-2 rounded-lg border border-slate-300"/>
+          <button id="btnOtpVerify" class="btn px-3 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-500">Verify & Book</button>
+        </div>
+
+        <p class="text-[11px] text-slate-500">We only use your email to confirm this slot. No password needed.</p>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ===== utils =====
     const $  = (s, el=document)=>el.querySelector(s);
@@ -207,21 +215,12 @@
     const myList   = $('#myList');
     const mineCount= $('#mineCount');
 
-    // Email auth refs
-    const emailInput = $('#emailInput');
-    const btnSendMagic = $('#btnSendMagic');
-    const btnSendEmailOtp = $('#btnSendEmailOtp');
-    const emailStatus = $('#emailStatus');
-    const otpArea = $('#otpArea');
-    const emailOtpCode = $('#emailOtpCode');
-    const btnVerifyEmailOtp = $('#btnVerifyEmailOtp');
-
-    const notAuthed  = $('#notAuthed');
-    const authed     = $('#authed');
-    const whoami     = $('#whoami');
-    const btnLogout  = $('#btnLogout');
+    const acctNot = $('#acctNot');
+    const acctYes = $('#acctYes');
+    const whoami  = $('#whoami');
     const displayNameInp = $('#displayName');
     const saveDisplayName = $('#saveDisplayName');
+    const btnLogout = $('#btnLogout');
 
     // Admin modal
     const adminModal = $('#adminModal');
@@ -244,9 +243,20 @@
     const winEnd   = $('#winEnd');
     const btnSaveWindow = $('#btnSaveWindow');
 
+    // OTP modal
+    const otpModal = $('#otpModal');
+    const otpClose = $('#otpClose');
+    const otpEmail = $('#otpEmail');
+    const btnOtpSend = $('#btnOtpSend');
+    const otpSendStatus = $('#otpSendStatus');
+    const otpCode = $('#otpCode');
+    const btnOtpVerify = $('#btnOtpVerify');
+    const otpSlotLabel = $('#otpSlotLabel');
+
     // ===== state =====
     let adminSession = null;
     let clickBusy = false;
+    let pendingSlot = null; // { date, pc, startISO, endISO, display_name }
     // default visible window if no rule exists yet (09:30–17:00)
     let dayWindow = { start_min: 570, end_min: 1020 }; 
 
@@ -338,52 +348,20 @@
     };
     const listByPC = (resvs, pc)=> resvs.filter(r=>r.pc===pc).sort((a,b)=>a.start_iso.localeCompare(b.start_iso));
 
-    // ===== auth UI =====
+    // ===== account UI =====
     async function refreshAuthUI(){
       const { data: { user } } = await supa.auth.getUser();
       if (user) {
-        notAuthed.classList.add('hidden');
-        authed.classList.remove('hidden');
+        acctNot.classList.add('hidden');
+        acctYes.classList.remove('hidden');
         whoami.textContent = user.email || '(no email?)';
         displayNameInp.value = (user.user_metadata?.display_name || '');
       } else {
-        notAuthed.classList.remove('hidden');
-        authed.classList.add('hidden');
+        acctNot.classList.remove('hidden');
+        acctYes.classList.add('hidden');
         whoami.textContent = '';
       }
     }
-
-    btnSendMagic.addEventListener('click', async ()=>{
-      const email = (emailInput.value||'').trim();
-      if(!email) return alert('Enter your email.');
-      emailStatus.textContent = 'Sending magic link…';
-      const { error } = await supa.auth.signInWithOtp({
-        email,
-        options:{ shouldCreateUser: true, emailRedirectTo: window.location.href }
-      });
-      emailStatus.textContent = error ? error.message : 'Check your inbox for the sign-in link.';
-    });
-
-    btnSendEmailOtp.addEventListener('click', async ()=>{
-      const email = (emailInput.value||'').trim();
-      if(!email) return alert('Enter your email.');
-      emailStatus.textContent = 'Sending code…';
-      const { error } = await supa.auth.signInWithOtp({ email, options:{ shouldCreateUser: true }});
-      if (error) { emailStatus.textContent = error.message; return; }
-      emailStatus.textContent = 'Code sent. Enter it below.';
-      otpArea.classList.remove('hidden');
-    });
-
-    btnVerifyEmailOtp.addEventListener('click', async ()=>{
-      const email = (emailInput.value||'').trim();
-      const token = (emailOtpCode.value||'').trim();
-      if(!email || !token) return;
-      const { error } = await supa.auth.verifyOtp({ email, token, type:'email' });
-      if (error) return alert(error.message);
-      await refreshAuthUI();
-      await render();
-      await renderMine();
-    });
 
     btnLogout?.addEventListener('click', async ()=>{
       await supa.auth.signOut();
@@ -402,22 +380,66 @@
       await refreshAuthUI();
     });
 
-    // ===== reserve & render =====
-    async function reserve(date, pc, sl){
-      if (clickBusy) return;
-      clickBusy = true;
-      try{
-        const { data:{ user } } = await supa.auth.getUser();
-        if(!user) return alert('Please sign in first.');
-        const display_name = (displayNameInp.value || '').trim() || null;
+    // ===== OTP modal helpers =====
+    function openOtpModal(slotInfo){
+      pendingSlot = slotInfo;
+      otpSlotLabel.textContent = `Slot: ${slotLabel(slotInfo.startISO, slotInfo.endISO)} · ${slotInfo.pc}`;
+      otpModal.classList.remove('hidden'); otpModal.classList.add('flex');
+      otpEmail.focus();
+    }
+    function closeOtpModal(){
+      otpModal.classList.add('hidden'); otpModal.classList.remove('flex');
+      otpSendStatus.textContent = '';
+      otpEmail.value = '';
+      otpCode.value = '';
+      pendingSlot = null;
+    }
+    otpClose.addEventListener('click', closeOtpModal);
 
-        await rpcReserve({ in_date: date, in_pc: pc, in_start_iso: sl.startISO, in_end_iso: sl.endISO, in_display_name: display_name });
+    // Send OTP email
+    btnOtpSend.addEventListener('click', async ()=>{
+      const email = (otpEmail.value||'').trim();
+      if(!email) return alert('Enter your email.');
+      otpSendStatus.textContent = 'Sending…';
+      const { error } = await supa.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname }
+      });
+      otpSendStatus.textContent = error ? error.message : 'Code sent. Check your inbox.';
+    });
+
+    // Verify & Book
+    btnOtpVerify.addEventListener('click', async ()=>{
+      const email = (otpEmail.value||'').trim();
+      const token = (otpCode.value||'').trim();
+      if(!email || !token) return alert('Enter the code sent to your email.');
+      if(!pendingSlot) return alert('No slot pending. Close and try again.');
+
+      // 1) Verify OTP → signs user in
+      const { error } = await supa.auth.verifyOtp({ email, token, type: 'email' });
+      if (error) return alert(error.message);
+
+      // 2) Book the exact pending slot
+      try{
+        const display_name = (displayNameInp?.value || '').trim() || null;
+        await rpcReserve({
+          in_date: pendingSlot.date,
+          in_pc: pendingSlot.pc,
+          in_start_iso: pendingSlot.startISO,
+          in_end_iso: pendingSlot.endISO,
+          in_display_name: display_name
+        });
+        closeOtpModal();
+        await refreshAuthUI();
         await render();
         await renderMine();
-      }catch(err){ alert(err.message || 'Error making reservation'); }
-      finally { clickBusy = false; }
-    }
+        alert('Reservation confirmed ✅');
+      }catch(e){
+        alert(e.message || 'Failed to reserve');
+      }
+    });
 
+    // ===== reserve & render =====
     async function refreshDayWindow(){
       const date = datePicker.value;
       const rule = await getDayRule(date);
@@ -471,7 +493,21 @@
             }`;
 
           if(!isReserved){
-            btn.addEventListener('click', ()=> reserve(date, pc, sl));
+            btn.addEventListener('click', async ()=>{
+              // If user is already signed in, reserve immediately
+              const { data:{ user } } = await supa.auth.getUser();
+              if (user) {
+                const display_name = (displayNameInp?.value || '').trim() || null;
+                try{
+                  await rpcReserve({ in_date: date, in_pc: pc, in_start_iso: sl.startISO, in_end_iso: sl.endISO, in_display_name: display_name });
+                  await render(); await renderMine();
+                }catch(e){ alert(e.message || 'Error making reservation'); }
+              } else {
+                // Otherwise, open OTP modal and verify before booking
+                const display_name = (displayNameInp?.value || '').trim() || null;
+                openOtpModal({ date, pc, startISO: sl.startISO, endISO: sl.endISO, display_name });
+              }
+            });
           }
           g.appendChild(btn);
         }
@@ -532,7 +568,8 @@
         btn.textContent='Remove';
         btn.addEventListener('click', async ()=>{
           try{
-            await rpcAdmin('removeReservation', { in_id: r.id });
+            await rpcAdmin('removeReservation', { in_id_text: String(r.id) });
+
             await renderAdminList(); await render(); await renderMine();
           }catch(e){ alert(e.message); }
         });
@@ -583,26 +620,28 @@
     }
     toggleOpen.addEventListener('change', applyControlsChange);
     lock1.addEventListener('change', applyControlsChange);
+    lock2.addEventListener('change', applyControlsChange);
 
     btnWipeDay.addEventListener('click', async ()=>{
       const date = datePicker.value;
       if(!confirm('Clear all reservations on '+date+'?')) return;
       try{
-        await rpcAdmin('clearDay', { in_date: date });
+        await rpcAdmin('clearDay', { in_date_text: String(date) }); // e.g. "2025-11-01"
+
         await renderAdminList(); await render(); await renderMine();
       }catch(e){ alert(e.message); }
     });
 
     // Save day window: convert picked LOCAL times to UTC minutes for that date
-    const toHH = (d)=>d.getUTCHours()*60 + d.getUTCMinutes();
+    const toMinutesUTC = (d)=> d.getUTCHours()*60 + d.getUTCMinutes();
     btnSaveWindow.addEventListener('click', async ()=>{
       const date = datePicker.value;
       const [sh, sm] = winStart.value.split(':').map(v=>parseInt(v,10));
       const [eh, em] = winEnd.value.split(':').map(v=>parseInt(v,10));
       const startLocal = new Date(`${date}T${pad(sh)}:${pad(sm)}:00`);
       const endLocal   = new Date(`${date}T${pad(eh)}:${pad(em)}:00`);
-      const in_start_min = toHH(startLocal);
-      const in_end_min   = toHH(endLocal);
+      const in_start_min = toMinutesUTC(startLocal);
+      const in_end_min   = toMinutesUTC(endLocal);
 
       try{
         await rpcAdmin('setDayWindow', { in_date: date, in_start_min, in_end_min });
@@ -617,7 +656,7 @@
         await render(); await renderMine();
       }).subscribe();
 
-    // Auth state changes (user or admin)
+    // Auth changes
     supa.auth.onAuthStateChange((_event, session)=>{ adminSession = session; refreshAuthUI(); });
 
     // initial render
