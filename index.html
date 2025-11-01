@@ -12,12 +12,55 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    :root{--brand:#0ea5e9}
-    *{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-    .card{border-radius:1rem;box-shadow:0 10px 20px rgba(0,0,0,.05)}
-    .btn{transition:transform .05s ease}
-    .btn:active{transform:translateY(1px)}
-  </style>
+  :root {
+    --brand: #e50914;         /* bright red accent */
+    --brand-dark: #b00610;
+    --text-dark: #0f0f0f;
+  }
+  * { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+  body {
+    background-color: #fafafa;
+    color: var(--text-dark);
+  }
+  .card {
+    border-radius: 1rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,.05);
+  }
+  .btn {
+    transition: transform .05s ease, background-color .2s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+
+  /* Button themes */
+  .btn-primary {
+    background-color: var(--brand);
+    color: white;
+  }
+  .btn-primary:hover {
+    background-color: var(--brand-dark);
+  }
+
+  .btn-secondary {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    color: var(--text-dark);
+  }
+  .btn-secondary:hover {
+    background-color: #f2f2f2;
+  }
+
+  /* Accent elements */
+  h1, h2, h3 { color: var(--text-dark); }
+  a, .text-accent { color: var(--brand); }
+
+  /* Slot availability highlights */
+  .slot-available { color: var(--brand); font-weight: 500; }
+  .slot-booked { color: #555; }
+
+  /* Admin modal overlay tweak */
+  #adminModal, #otpModal { backdrop-filter: blur(2px); }
+</style>
+
 
   <script>
     /* ===== Supabase client (keep your project keys) ===== */
@@ -34,8 +77,9 @@
   <div class="flex items-center gap-3 mb-3">
     <!-- logo -->
     <div class="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 text-lg font-semibold">
-      <img src="logo3.png" alt="Drone Lab Logo"
-     class="w-12 h-12 rounded-lg object-contain bg-black p-1">
+      <img src="logo.png" alt="Drone Lab Logo"
+     class="w-12 h-12 rounded-lg object-contain bg-white p-1 shadow-sm">
+
 
     </div>
     <div>
@@ -44,9 +88,7 @@
         Click any free slot. We’ll email you a 6-digit code; enter it to confirm your booking.
       </p>
     </div>
-    <button id="btnAdmin" class="ml-auto btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">
-      Admin
-    </button>
+    <button id="btnAdmin" class="btn btn-primary px-3 py-2 rounded-lg">Admin</button>
   </div>
 
   <!-- banner -->
@@ -114,13 +156,15 @@
           <input id="winStart" type="time" class="px-2 py-1 rounded-lg border border-slate-300" value="09:30">
           <label class="text-sm">End</label>
           <input id="winEnd" type="time" class="px-2 py-1 rounded-lg border border-slate-300" value="17:00">
-          <button id="btnSaveWindow" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Save</button>
+          <button id="btnSaveWindow" class="btn btn-secondary px-3 py-2 rounded-lg">Save</button>
+
         </div>
 
         <div class="flex items-center gap-3 mb-3">
           <label class="text-sm">Max daily minutes per user</label>
           <input id="maxMinutes" type="number" min="15" step="15" class="px-2 py-1 rounded-lg border border-slate-300 w-28" value="60">
-          <button id="btnSaveMax" class="btn px-3 py-2 rounded-lg bg-white border border-slate-200 hover:bg-slate-100">Save max</button>
+          <button id="btnSaveWindow" class="btn btn-secondary px-3 py-2 rounded-lg">Save</button>
+
         </div>
 
         <div class="flex items-center gap-3">
@@ -450,7 +494,7 @@
             </div>
             ${isReserved
               ? `<div class="text-right"><div class="text-xs">Reserved by <span>${maskName(r.display_name)}</span></div></div>`
-              : `<div class="text-xs text-emerald-700">Available</div>`
+              : `<div class="text-xs slot-available">Available</div>`
             }`;
 
           if(!isReserved){
