@@ -447,10 +447,33 @@
             }`;
 
           if(!isReserved){
-            btn.addEventListener('click', async ()=>{
-              openOtpModal({ date, pc, startISO: sl.startISO, endISO: sl.endISO });
-            });
-          }
+  btn.addEventListener('click', async ()=>{
+    // If user already signed in, book immediately (no OTP prompt)
+    const { data: { user } } = await supa.auth.getUser();
+    const display_name = (displayNameInp?.value || '').trim() || null;
+
+    if (user) {
+      try{
+        await rpcReserve({
+          in_date: date,
+          in_pc: pc,
+          in_start_iso: sl.startISO,
+          in_end_iso: sl.endISO,
+          in_display_name: display_name
+        });
+        await render();
+        await renderMine();
+        alert('Reservation confirmed ✅');
+      } catch (e) {
+        alert(e.message || 'Error making reservation');
+      }
+    } else {
+      // Not signed in yet → OTP once
+      openOtpModal({ date, pc, startISO: sl.startISO, endISO: sl.endISO });
+    }
+  });
+}
+
           g.appendChild(btn);
         }
       }
@@ -493,6 +516,11 @@
       }
     }
     $('#btnFindMine').addEventListener('click', renderMine);
+    
+    datePicker.addEventListener('change', async ()=>{
+  await render();
+  await renderMine();
+});
 
     /* ===== admin modal & actions ===== */
     const renderAdminList = async ()=>{
@@ -522,16 +550,24 @@
     };
 
     // Open/close admin modal
-    btnAdmin.addEventListener('click', async ()=>{
-      const { data } = await supa.auth.getSession();
-      adminSession = data.session || null;
-      adminModal.classList.remove('hidden'); adminModal.classList.add('flex');
-      adminLogin.classList.toggle('hidden', !!adminSession);
-      adminPanel.classList.toggle('hidden', !adminSession);
-      if (adminSession) {
-        await renderAdminList();
-      }
-    });
+    // Open/close admin modal
+btnAdmin.addEventListener('click', async ()=>{
+  const { data } = await supa.auth.getSession();
+  adminSession = data.session || null;
+  adminModal.classList.remove('hidden'); adminModal.classList.add('flex');
+  adminLogin.classList.toggle('hidden', !!adminSession);
+  adminPanel.classList.toggle('hidden', !adminSession);
+  if (adminSession) {
+    // 🔽 ADD THIS: load current controls into the page toggles/inputs
+    const c = await getControls();
+    toggleOpen.checked = !!c.open;
+    lock1.checked = !!c.lock_pc1;
+    lock2.checked = !!c.lock_pc2;
+    maxMinutesInp.value = String(c.max_minutes ?? 60);
+    await renderAdminList();
+  }
+});
+
     closeAdmin.addEventListener('click', ()=>{
       adminModal.classList.add('hidden'); adminModal.classList.remove('flex');
     });
