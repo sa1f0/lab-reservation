@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Drone Lab — PC Reservation (OTP on Booking)</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Drone Lab — PC Reservation (OTP Only)</title>
 
   <!-- Tailwind + Supabase -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -18,20 +18,19 @@
   </style>
 
   <script>
-    // ====== Supabase client (keep your project keys) ======
+    /* ===== Supabase client (keep your project keys) ===== */
     const SUPABASE_URL  = 'https://asfjgkvbtxzqibauvwxl.supabase.co';
     const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZmpna3ZidHh6cWliYXV2d3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NTUwODMsImV4cCI6MjA3NzMzMTA4M30.ZKxf7Kz60S_fdQ1qvVffCGD69vuPfBIUn3dyosZ8WQM';
     const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
   </script>
 </head>
-
 <body class="bg-slate-50 text-slate-800">
   <div class="max-w-6xl mx-auto p-4 sm:p-8">
     <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
       <div>
         <h1 class="text-2xl sm:text-3xl font-bold">Drone Lab — PC Reservation</h1>
         <p class="text-sm text-slate-600">
-          Click a free slot. If you’re not signed in, we’ll send a <b>6-digit OTP to your email</b> to confirm and book.
+          Click a free slot. We’ll send a <b>6-digit OTP</b> to confirm and book. No links, no passwords.
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -62,7 +61,7 @@
       <div class="card bg-white p-4">
         <h2 class="font-semibold text-lg mb-2">Account</h2>
         <div id="acctNot" class="text-sm text-slate-600">
-          You don’t need an account first—just click a slot and verify with a one-time code.
+          No account needed before booking — you’ll verify via OTP when you choose a slot.
         </div>
         <div id="acctYes" class="hidden">
           <div class="text-sm mb-2">Signed in as <span id="whoami" class="font-medium"></span></div>
@@ -101,7 +100,7 @@
     <section class="grid md:grid-cols-2 gap-6 mb-6">
       <div class="card bg-white p-4">
         <h3 class="font-semibold mb-2">My reservations (selected date)</h3>
-        <p class="text-xs text-slate-500 mb-3">After you verify once, your bookings appear here automatically; you can cancel them.</p>
+        <p class="text-xs text-slate-500 mb-3">After OTP verification, your bookings appear here automatically; you can cancel them.</p>
         <div class="flex items-center gap-2 mb-3">
           <span id="mineCount" class="text-xs text-slate-500"></span>
         </div>
@@ -110,7 +109,7 @@
 
       <div class="card bg-white p-4">
         <h3 class="font-semibold mb-2">Admin: Day availability (selected date)</h3>
-        <p class="text-xs text-slate-500 mb-3">Set the ONLY bookable window. (We convert your local time to UTC for the server.)</p>
+        <p class="text-xs text-slate-500 mb-3">Set the ONLY bookable window. (We convert your local time to UTC.)</p>
         <div class="flex items-center gap-3 mb-3">
           <label class="text-sm">Start</label>
           <input id="winStart" type="time" class="px-2 py-1 rounded-lg border border-slate-300" value="09:30">
@@ -118,11 +117,11 @@
           <input id="winEnd" type="time" class="px-2 py-1 rounded-lg border border-slate-300" value="17:00">
           <button id="btnSaveWindow" class="btn px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Save</button>
         </div>
-        <p class="text-xs text-slate-500">Slots outside this window will be disabled (client) and rejected (server).</p>
+        <p class="text-xs text-slate-500">Slots outside this window are disabled (client) and rejected (server).</p>
       </div>
     </section>
 
-    <footer class="mt-10 text-center text-xs text-slate-500">Server-backed via Supabase. OTP required for first booking.</footer>
+    <footer class="mt-10 text-center text-xs text-slate-500">Server-backed via Supabase. Email OTP only.</footer>
   </div>
 
   <!-- Admin modal -->
@@ -167,7 +166,7 @@
     </div>
   </div>
 
-  <!-- OTP Modal -->
+  <!-- OTP Modal (email code only) -->
   <div id="otpModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 p-4 z-50">
     <div class="w-full max-w-md card bg-white p-5">
       <div class="flex items-center justify-between mb-3">
@@ -190,20 +189,20 @@
           <button id="btnOtpVerify" class="btn px-3 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-500">Verify & Book</button>
         </div>
 
-        <p class="text-[11px] text-slate-500">We only use your email to confirm this slot. No password needed.</p>
+        <p class="text-[11px] text-slate-500">We only use your email to confirm this slot. No links or passwords.</p>
       </div>
     </div>
   </div>
 
   <script>
-    // ===== utils =====
+    /* ===== utils ===== */
     const $  = (s, el=document)=>el.querySelector(s);
     const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
     const pad = (n)=>String(n).padStart(2,'0');
     const todayStr = ()=> new Date().toISOString().slice(0,10);
     const toMs = (x)=> new Date(x).getTime();
 
-    // ===== refs =====
+    /* ===== refs ===== */
     const datePicker = $('#datePicker');
     const slotLenSel = $('#slotLen');
     const openBadge  = $('#openBadge');
@@ -253,17 +252,16 @@
     const btnOtpVerify = $('#btnOtpVerify');
     const otpSlotLabel = $('#otpSlotLabel');
 
-    // ===== state =====
+    /* ===== state ===== */
     let adminSession = null;
     let clickBusy = false;
     let pendingSlot = null; // { date, pc, startISO, endISO, display_name }
-    // default visible window if no rule exists yet (09:30–17:00)
-    let dayWindow = { start_min: 570, end_min: 1020 }; 
+    // default visible window if no rule exists (09:30–17:00)
+    let dayWindow = { start_min: 570, end_min: 1020 };
 
-    // default date
     datePicker.value = todayStr();
 
-    // ===== backend helpers =====
+    /* ===== backend helpers ===== */
     async function getReservations(date){
       const { data, error } = await supa.from('reservations').select('*').eq('date', date);
       if(error) throw error; return data || [];
@@ -303,7 +301,7 @@
       }
     }
 
-    // ===== PC button visuals =====
+    /* ===== PC button visuals ===== */
     function updatePcButtons(active) {
       $$('.pcBtn').forEach(btn=>{
         btn.classList.remove('bg-sky-600','bg-violet-600','text-white','ring-2','ring-offset-2','ring-sky-300','ring-violet-300');
@@ -318,12 +316,10 @@
         }
       });
     }
-    $$('.pcBtn').forEach(b=>{
-      b.addEventListener('click', ()=> updatePcButtons(b.dataset.pc));
-    });
-    updatePcButtons('PC-1'); // default visual
+    $$('.pcBtn').forEach(b=> b.addEventListener('click', ()=> updatePcButtons(b.dataset.pc)));
+    updatePcButtons('PC-1');
 
-    // ===== slot helpers =====
+    /* ===== slot helpers ===== */
     function generateSlots(date){
       const len = Number(slotLenSel.value);
       const slots=[];
@@ -348,7 +344,7 @@
     };
     const listByPC = (resvs, pc)=> resvs.filter(r=>r.pc===pc).sort((a,b)=>a.start_iso.localeCompare(b.start_iso));
 
-    // ===== account UI =====
+    /* ===== account UI ===== */
     async function refreshAuthUI(){
       const { data: { user } } = await supa.auth.getUser();
       if (user) {
@@ -362,14 +358,12 @@
         whoami.textContent = '';
       }
     }
-
     btnLogout?.addEventListener('click', async ()=>{
       await supa.auth.signOut();
       await refreshAuthUI();
       await render();
       myList.innerHTML=''; mineCount.textContent='';
     });
-
     saveDisplayName.addEventListener('click', async ()=>{
       const { data: { user } } = await supa.auth.getUser();
       if(!user) return alert('Sign in first');
@@ -380,7 +374,7 @@
       await refreshAuthUI();
     });
 
-    // ===== OTP modal helpers =====
+    /* ===== OTP modal ===== */
     function openOtpModal(slotInfo){
       pendingSlot = slotInfo;
       otpSlotLabel.textContent = `Slot: ${slotLabel(slotInfo.startISO, slotInfo.endISO)} · ${slotInfo.pc}`;
@@ -396,42 +390,30 @@
     }
     otpClose.addEventListener('click', closeOtpModal);
 
-// Send OTP email
-btnOtpSend.addEventListener('click', async ()=>{
-  const email = (otpEmail.value || '').trim();
-  if (!email) return alert('Enter your email.');
+    // Send the OTP **code** email (no links used)
+    btnOtpSend.addEventListener('click', async ()=>{
+      const email = (otpEmail.value || '').trim();
+      if(!email) return alert('Enter your email.');
+      otpSendStatus.textContent = 'Sending…';
+      const { error } = await supa.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: true } // <- no emailRedirectTo, we want CODE email
+      });
+      otpSendStatus.textContent = error ? error.message : 'Code sent. Check your inbox.';
+    });
 
-  otpSendStatus.textContent = 'Sending…';
-
-  // ✅ Always redirect back to your hosted site (not localhost)
-  const APP_URL = 'https://sa1f0.github.io/lab-reservation/';
-
-  const { error } = await supa.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: APP_URL
-    }
-  });
-
-  otpSendStatus.textContent = error
-    ? error.message
-    : 'Code sent. Check your inbox.';
-});
-
-
-    // Verify & Book
+    // Verify code, then book the exact pending slot
     btnOtpVerify.addEventListener('click', async ()=>{
       const email = (otpEmail.value||'').trim();
       const token = (otpCode.value||'').trim();
       if(!email || !token) return alert('Enter the code sent to your email.');
       if(!pendingSlot) return alert('No slot pending. Close and try again.');
 
-      // 1) Verify OTP → signs user in
+      // 1) Verifies + signs the user in (creates a session)
       const { error } = await supa.auth.verifyOtp({ email, token, type: 'email' });
       if (error) return alert(error.message);
 
-      // 2) Book the exact pending slot
+      // 2) Book
       try{
         const display_name = (displayNameInp?.value || '').trim() || null;
         await rpcReserve({
@@ -451,15 +433,11 @@ btnOtpSend.addEventListener('click', async ()=>{
       }
     });
 
-    // ===== reserve & render =====
+    /* ===== rendering ===== */
     async function refreshDayWindow(){
       const date = datePicker.value;
       const rule = await getDayRule(date);
-      if (rule) {
-        dayWindow = { start_min: rule.start_min, end_min: rule.end_min };
-      } else {
-        dayWindow = { start_min: 570, end_min: 1020 }; // 09:30–17:00 default
-      }
+      dayWindow = rule ? { start_min: rule.start_min, end_min: rule.end_min } : { start_min: 570, end_min: 1020 };
       const toHHMM = (m)=> pad(Math.floor(m/60))+':'+pad(m%60);
       winStart.value = toHHMM(dayWindow.start_min);
       winEnd.value   = toHHMM(dayWindow.end_min);
@@ -506,16 +484,16 @@ btnOtpSend.addEventListener('click', async ()=>{
 
           if(!isReserved){
             btn.addEventListener('click', async ()=>{
-              // If user is already signed in, reserve immediately
               const { data:{ user } } = await supa.auth.getUser();
               if (user) {
+                // already signed in -> reserve immediately
                 const display_name = (displayNameInp?.value || '').trim() || null;
                 try{
                   await rpcReserve({ in_date: date, in_pc: pc, in_start_iso: sl.startISO, in_end_iso: sl.endISO, in_display_name: display_name });
                   await render(); await renderMine();
                 }catch(e){ alert(e.message || 'Error making reservation'); }
               } else {
-                // Otherwise, open OTP modal and verify before booking
+                // open OTP modal
                 const display_name = (displayNameInp?.value || '').trim() || null;
                 openOtpModal({ date, pc, startISO: sl.startISO, endISO: sl.endISO, display_name });
               }
@@ -526,7 +504,7 @@ btnOtpSend.addEventListener('click', async ()=>{
       }
     }
 
-    // ===== My reservations (owner via RLS) =====
+    /* ===== My reservations (owner) ===== */
     async function renderMine(){
       myList.innerHTML = '';
       mineCount.textContent = '';
@@ -550,7 +528,7 @@ btnOtpSend.addEventListener('click', async ()=>{
         btn.addEventListener('click', async ()=>{
           btn.disabled = true; btn.textContent = 'Cancelling…';
           try{
-            const { error } = await supa.from('reservations').delete().eq('id', r.id); // Allowed by RLS (owner)
+            const { error } = await supa.from('reservations').delete().eq('id', r.id); // RLS: owner can delete
             if(error) throw error;
             await render(); await renderMine();
           }catch(e){ alert(e.message || 'Cancel failed'); }
@@ -563,7 +541,7 @@ btnOtpSend.addEventListener('click', async ()=>{
       }
     }
 
-    // ===== admin modal & actions =====
+    /* ===== admin modal & actions ===== */
     const renderAdminList = async ()=>{
       const date = datePicker.value;
       const resvs = await getReservations(date);
@@ -580,8 +558,7 @@ btnOtpSend.addEventListener('click', async ()=>{
         btn.textContent='Remove';
         btn.addEventListener('click', async ()=>{
           try{
-            await rpcAdmin('removeReservation', { in_id_text: String(r.id) });
-
+            await rpcAdmin('removeReservation', { in_id_text: String(r.id) }); // pass as text
             await renderAdminList(); await render(); await renderMine();
           }catch(e){ alert(e.message); }
         });
@@ -638,8 +615,7 @@ btnOtpSend.addEventListener('click', async ()=>{
       const date = datePicker.value;
       if(!confirm('Clear all reservations on '+date+'?')) return;
       try{
-        await rpcAdmin('clearDay', { in_date_text: String(date) }); // e.g. "2025-11-01"
-
+        await rpcAdmin('clearDay', { in_date_text: String(date) }); // pass as text
         await renderAdminList(); await render(); await renderMine();
       }catch(e){ alert(e.message); }
     });
@@ -662,21 +638,17 @@ btnOtpSend.addEventListener('click', async ()=>{
       }catch(e){ alert(e.message || 'Failed to save window'); }
     });
 
-    // ===== realtime: auto-refresh when reservations change =====
+    // realtime: auto-refresh when reservations change
     supa.channel('reservations-live')
       .on('postgres_changes', { event: '*', schema:'public', table:'reservations' }, async () => {
         await render(); await renderMine();
       }).subscribe();
 
-    // Auth changes
+    // auth changes
     supa.auth.onAuthStateChange((_event, session)=>{ adminSession = session; refreshAuthUI(); });
 
     // initial render
-    (async () => {
-      await refreshAuthUI();
-      await render();
-      await renderMine();
-    })();
+    (async ()=>{ await refreshAuthUI(); await render(); await renderMine(); })();
   </script>
 </body>
 </html>
