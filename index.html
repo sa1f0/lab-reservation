@@ -3,99 +3,91 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>DRONE Lab — PC Reservation (OTP Only)</title>
-  <link rel="icon" type="image/png" href="logo3.png" />
-  <meta name="theme-color" content="#000000" />
+  <title>DRONE Lab — PC Reservation</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="favicon-96.png">
+  <link rel="icon" type="image/png" sizes="256x256" href="favicon-256.png">
+  <link rel="apple-touch-icon" href="favicon-256.png">
+  <meta name="theme-color" content="#000000">
 
   <!-- Tailwind + Supabase -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!-- ===== Styles ===== -->
   <style>
-  :root {
-    --brand: #e50914;         /* bright red accent */
-    --brand-dark: #b00610;
-    --text-dark: #0f0f0f;
-  }
-  * { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
-  body {
-    background-color: #fafafa;
-    color: var(--text-dark);
-  }
-  .card {
-    border-radius: 1rem;
-    box-shadow: 0 4px 10px rgba(0,0,0,.05);
-  }
-  .btn {
-    transition: transform .05s ease, background-color .2s ease;
-  }
-  .btn:active { transform: translateY(1px); }
+    :root {
+      --brand-red: #e50914;
+      --brand-red-dark: #b00610;
+      --brand-bg: #fdfdfd;
+      --brand-gray: #1e1e1e;
+    }
+    * { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    body {
+      background: var(--brand-bg);
+      color: var(--brand-gray);
+    }
+    .card { border-radius: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,.05); }
+    .btn { transition: transform .05s ease, background-color .2s ease, color .2s ease; }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary {
+      background-color: var(--brand-red);
+      color: white;
+    }
+    .btn-primary:hover { background-color: var(--brand-red-dark); }
+    .btn-secondary {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      color: var(--brand-gray);
+    }
+    .btn-secondary:hover { background-color: #fafafa; }
+    h1, h2, h3 { color: var(--brand-gray); }
+    .accent { color: var(--brand-red); }
+    .slot-available { color: var(--brand-red); font-weight: 500; }
+    .status-badge.open { background: #fee2e2; color: var(--brand-red-dark); }
+    .status-badge.closed { background: #f3f4f6; color: #6b7280; }
+  </style>
 
-  /* Button themes */
-  .btn-primary {
-    background-color: var(--brand);
-    color: white;
-  }
-  .btn-primary:hover {
-    background-color: var(--brand-dark);
-  }
-
-  .btn-secondary {
-    background-color: #fff;
-    border: 1px solid #ccc;
-    color: var(--text-dark);
-  }
-  .btn-secondary:hover {
-    background-color: #f2f2f2;
-  }
-
-  /* Accent elements */
-  h1, h2, h3 { color: var(--text-dark); }
-  a, .text-accent { color: var(--brand); }
-
-  /* Slot availability highlights */
-  .slot-available { color: var(--brand); font-weight: 500; }
-  .slot-booked { color: #555; }
-
-  /* Admin modal overlay tweak */
-  #adminModal, #otpModal { backdrop-filter: blur(2px); }
-</style>
-
-
+  <!-- Supabase setup -->
   <script>
-    /* ===== Supabase client (keep your project keys) ===== */
     const SUPABASE_URL  = 'https://asfjgkvbtxzqibauvwxl.supabase.co';
     const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzZmpna3ZidHh6cWliYXV2d3hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NTUwODMsImV4cCI6MjA3NzMzMTA4M30.ZKxf7Kz60S_fdQ1qvVffCGD69vuPfBIUn3dyosZ8WQM';
     const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
   </script>
 </head>
-<body class="bg-slate-50 text-slate-800">
-  <div class="max-w-6xl mx-auto p-4 sm:p-8">
 
-    <!-- Header -->
-    <header class="mb-8">
+<!-- ===== HEADER ===== -->
+<header class="mb-8">
   <div class="flex items-center gap-3 mb-3">
-    <!-- logo -->
-    <div class="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center text-slate-500 text-lg font-semibold">
-      <img src="logo.png" alt="Drone Lab Logo"
-     class="w-12 h-12 rounded-lg object-contain bg-white p-1 shadow-sm">
+    <!-- Logo -->
+    <img src="logo.png" alt="Drone Lab Logo"
+         class="w-12 h-12 rounded-lg object-contain bg-white p-1 shadow-sm border border-gray-200">
 
-
-    </div>
     <div>
-      <h1 class="text-3xl font-bold tracking-tight">DRONE Lab — PC Reservation</h1>
-      <p class="text-sm text-slate-600">
+      <h1 class="text-3xl font-bold tracking-tight">
+        <span class="accent">DRONE</span> Lab — PC Reservation
+      </h1>
+      <p class="text-sm text-gray-600">
         Click any free slot. We’ll email you a 6-digit code; enter it to confirm your booking.
       </p>
     </div>
-    <button id="btnAdmin" class="btn btn-primary px-3 py-2 rounded-lg">Admin</button>
+
+    <button id="btnAdmin"
+            class="ml-auto btn btn-primary px-3 py-2 rounded-lg shadow-sm">
+      Admin
+    </button>
   </div>
 
-  <!-- banner -->
-  <div class="w-full h-24 sm:h-28 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-sm font-medium mt-3">
-    Banner (coming soon)
+  <!-- Banner -->
+  <div class="w-full h-24 sm:h-28 bg-white border border-gray-200 rounded-xl
+              flex items-center justify-center text-gray-400 text-sm font-medium
+              shadow-sm mt-3">
+    Banner area (coming soon)
   </div>
 </header>
+
 
 
     <!-- Top controls -->
@@ -366,9 +358,9 @@
       return `${f(s)}–${f(e)}`;
     };
     const maskName = (name)=>{
-      if(!name) return 'User';
-      if(name.length<=2) return name[0]+"*";
-      return name[0] + '*'.repeat(Math.max(1,name.length-2)) + name[name.length-1];
+     // if(!name) return 'User';
+      //if(name.length<=2) return name[0]+"*";
+      return name//[0] + '*'.repeat(Math.max(1,name.length-2)) + name[name.length-1];
     };
     const listByPC = (resvs, pc)=> resvs.filter(r=>r.pc===pc).sort((a,b)=>a.start_iso.localeCompare(b.start_iso));
 
